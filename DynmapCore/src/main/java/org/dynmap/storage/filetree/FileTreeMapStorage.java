@@ -134,6 +134,7 @@ public class FileTreeMapStorage extends MapStorage {
         @Override
         public boolean write(long hash, BufferOutputStream encImage, long timestamp) {
             File ff = getTileFile(map.getImageFormat().getEncoding());
+            Log.info("writing to " + ff.getName());
             List<File> ffalt = getTileFilesAltFormats();
             File ffpar = ff.getParentFile();
             // Always clean up old alternate files, if they exist

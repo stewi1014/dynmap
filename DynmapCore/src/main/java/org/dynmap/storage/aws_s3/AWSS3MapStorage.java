@@ -1,5 +1,34 @@
 package org.dynmap.storage.aws_s3;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.dynmap.DynmapCore;
+import org.dynmap.DynmapWorld;
+import org.dynmap.Log;
+import org.dynmap.MapType;
+import org.dynmap.MapType.ImageEncoding;
+import org.dynmap.MapType.ImageVariant;
+import org.dynmap.PlayerFaces.FaceType;
+import org.dynmap.WebAuthManager;
+import org.dynmap.debug.Debug;
+import org.dynmap.storage.MapStorage;
+import org.dynmap.storage.MapStorageTile;
+import org.dynmap.storage.MapStorageTileEnumCB;
+import org.dynmap.storage.MapStorageBaseTileEnumCB;
+import org.dynmap.storage.MapStorageTileSearchEndCB;
+import org.dynmap.utils.BufferInputStream;
+import org.dynmap.utils.BufferOutputStream;
+
 import io.github.linktosriram.s3lite.api.client.S3Client;
 import io.github.linktosriram.s3lite.api.exception.NoSuchKeyException;
 import io.github.linktosriram.s3lite.api.exception.S3Exception;
@@ -80,13 +109,14 @@ public class AWSS3MapStorage extends MapStorage {
 
         @Override
         public TileRead read() {
-            S3Client s3 = null;
-            try {
-                s3 = getConnection();
-                GetObjectRequest req = GetObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                ResponseBytes<GetObjectResponse> obj = s3.getObjectAsBytes(req);
-                if (obj != null) {
-                    GetObjectResponse rsp = obj.getResponse();
+        	S3Client s3 = null;
+        	try {
+                Debug.debug("reading from " + baseKey);
+        		s3 = getConnection();
+        		GetObjectRequest req = GetObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+    			ResponseBytes<GetObjectResponse> obj = s3.getObjectAsBytes(req);
+    			if (obj != null) {
+    				GetObjectResponse rsp = obj.getResponse();
                     TileRead tr = new TileRead();
                     byte[] buf = obj.getBytes();
                     if (buf == null) {
@@ -118,19 +148,21 @@ public class AWSS3MapStorage extends MapStorage {
 
         @Override
         public boolean write(long hash, BufferOutputStream encImage, long timestamp) {
-            boolean done = false;
-            S3Client s3 = null;
-            try {
-                s3 = getConnection();
-                if (encImage == null) { // Delete?
-                    DeleteObjectRequest req = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                    s3.deleteObject(req);
-                } else {
-                    PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(map.getImageFormat().getEncoding().getContentType())
-                            .addMetadata("x-dynmap-hash", Long.toHexString(hash)).addMetadata("x-dynmap-ts", Long.toString(timestamp)).build();
-                    s3.putObject(req, RequestBody.fromBytes(encImage.buf));
-                }
-                done = true;
+        	boolean done = false;
+        	S3Client s3 = null;
+        	try {
+                Debug.debug("writing to " + baseKey);
+            	s3 = getConnection();
+        		if (encImage == null) { // Delete?
+        			DeleteObjectRequest req = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+        			s3.deleteObject(req);
+        		}
+        		else {
+        			PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(map.getImageFormat().getEncoding().getContentType())
+        					.addMetadata("x-dynmap-hash", Long.toHexString(hash)).addMetadata("x-dynmap-ts", Long.toString(timestamp)).build();
+        			s3.putObject(req, RequestBody.fromBytes(encImage.buf));
+        		}
+    			done = true;
             } catch (S3Exception x) {
                 Log.severe("AWS Exception", x);
             } catch (StorageShutdownException x) {
