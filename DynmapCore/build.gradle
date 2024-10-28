@@ -8,15 +8,18 @@ eclipse {
     }
 }
 
-sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
 dependencies {
     implementation project(':DynmapCoreAPI')
     implementation 'javax.servlet:javax.servlet-api:3.1'
-    implementation'org.eclipse.jetty:jetty-server:9.4.26.v20200117'
+    implementation 'org.eclipse.jetty:jetty-server:9.4.26.v20200117'
     implementation 'org.eclipse.jetty:jetty-servlet:9.4.26.v20200117'
     implementation 'com.googlecode.json-simple:json-simple:1.1.1'
-    implementation 'org.yaml:snakeyaml:1.23'	// DON'T UPDATE - NEWER ONE TRIPS ON WINDOWS ENCODED FILES
+    implementation 'org.yaml:snakeyaml:1.23'    // DON'T UPDATE - NEWER ONE TRIPS ON WINDOWS ENCODED FILES
     implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20180219.1'
     implementation 'org.postgresql:postgresql:42.2.18'
     implementation 'io.github.linktosriram.s3lite:core:0.0.2-SNAPSHOT'
@@ -31,13 +34,13 @@ dependencies {
 processResources {
     // replace stuff in mcmod.info, nothing else
     filesMatching([
-        'core.yml',
-        'lightings.txt',
-        'perspectives.txt',
-        'shaders.txt',
-        'extracted/web/version.js',
-        'extracted/web/index.html',
-        'extracted/web/login.html',
+            'core.yml',
+            'lightings.txt',
+            'perspectives.txt',
+            'shaders.txt',
+            'extracted/web/version.js',
+            'extracted/web/index.html',
+            'extracted/web/login.html',
     ]) {
         // replace version and mcversion
         expand(
@@ -48,7 +51,7 @@ processResources {
 }
 
 jar {
-   archiveClassifier = 'unshaded'
+    archiveClassifier = 'unshaded'
 }
 
 shadowJar {
@@ -70,15 +73,15 @@ shadowJar {
         include(dependency(':DynmapCoreAPI'))
         exclude("META-INF/maven/**")
         exclude("META-INF/services/**")
-	}
-	relocate('org.json.simple', 'org.dynmap.json.simple')
-	relocate('org.yaml.snakeyaml', 'org.dynmap.snakeyaml')
-	relocate('org.eclipse.jetty', 'org.dynmap.jetty')
-	relocate('org.owasp.html', 'org.dynmap.org.owasp.html')
-	relocate('javax.servlet', 'org.dynmap.javax.servlet' )
-	relocate('org.postgresql', 'org.dynmap.org.postgresql')
-	relocate('io.github.linktosriram.s3lite', 'org.dynmap.s3lite')    
-	
+    }
+    relocate('org.json.simple', 'org.dynmap.json.simple')
+    relocate('org.yaml.snakeyaml', 'org.dynmap.snakeyaml')
+    relocate('org.eclipse.jetty', 'org.dynmap.jetty')
+    relocate('org.owasp.html', 'org.dynmap.org.owasp.html')
+    relocate('javax.servlet', 'org.dynmap.javax.servlet')
+    relocate('org.postgresql', 'org.dynmap.org.postgresql')
+    relocate('io.github.linktosriram.s3lite', 'org.dynmap.s3lite')
+
     destinationDirectory = file '../target'
     archiveClassifier = ''
 }

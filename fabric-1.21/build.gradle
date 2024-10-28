@@ -1,18 +1,10 @@
 plugins {
-	id 'fabric-loom' version '1.6.11'
+    id 'fabric-loom' version '1.6.11'
 }
 
-archivesBaseName = "Dynmap"
 version = parent.version
 group = parent.group
 
-eclipse {
-    project {
-        name = "Dynmap(Fabric-1.21)"
-    }
-}
-
-sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = JavaLanguageVersion.of(21) // Need this here so eclipse task generates correctly.
 
 configurations {
     shadow
@@ -63,7 +55,7 @@ jar {
 }
 
 remapJar {
-    archiveFileName = "${archivesBaseName}-${project.version}-fabric-${project.minecraft_version}.jar"
+    archiveFileName = "Dynmap-${project.version}-fabric-${project.minecraft_version}.jar"
     destinationDirectory = file '../target'
 }
 
