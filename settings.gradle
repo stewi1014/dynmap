@@ -1,7 +1,6 @@
 pluginManagement {
   repositories {
     gradlePluginPortal()
-    maven { url "https://papermc.io/repo/repository/maven-public/" }
     maven { url "https://maven.fabricmc.net/" }
   }
 }
@@ -19,5 +18,3 @@ project(':DynmapCore').projectDir = "$rootDir/DynmapCore" as File
 project(':DynmapCoreAPI').projectDir = "$rootDir/DynmapCoreAPI" as File
 project(':fabric-1.21').projectDir = "$rootDir/fabric-1.21" as File
 project(':forge-1.21').projectDir = "$rootDir/forge-1.21" as File
-
-
