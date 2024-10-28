@@ -1,13 +1,5 @@
 description = "DynmapCore"
 
-apply plugin: 'eclipse'
-
-eclipse {
-    project {
-        name = "Dynmap(DynmapCore)"
-    }
-}
-
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
