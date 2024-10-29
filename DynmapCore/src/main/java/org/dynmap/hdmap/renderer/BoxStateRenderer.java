@@ -1,15 +1,11 @@
 package org.dynmap.hdmap.renderer;
 
+import org.dynmap.renderer.*;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Map;
-
-import org.dynmap.renderer.CustomRenderer;
-import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.renderer.MapDataContext;
-import org.dynmap.renderer.RenderPatch;
-import org.dynmap.renderer.RenderPatchFactory;
 
 /**
  * Simple renderer for creating a model of a block, with a selection of two possible textures for each of the 6 faces
@@ -21,8 +17,8 @@ public class BoxStateRenderer extends CustomRenderer {
     private RenderPatch[] models[];
 
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         double xmin = 0.0, xmax = 1.0;
         double ymin = 0.0, ymax = 1.0;
@@ -58,12 +54,12 @@ public class BoxStateRenderer extends CustomRenderer {
             zmax = Double.valueOf(lim);
             if (zmax > 1.0) zmax = 1.0;
         }
-        DynmapBlockState bs = DynmapBlockState.getBaseStateByName(blkname);	// Look up block
+        DynmapBlockState bs = DynmapBlockState.getBaseStateByName(blkname);    // Look up block
         /* Now, build box models */
         models = new RenderPatch[bs.getStateCount()][];
         int[] patchlist = new int[6];
         for (int i = 0; i < models.length; i++) {
-        	DynmapBlockState cbs = bs.getState(i);
+            DynmapBlockState cbs = bs.getState(i);
             ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
             String[] states = cbs.stateList;
             // Produce patch list
@@ -76,7 +72,7 @@ public class BoxStateRenderer extends CustomRenderer {
             CustomRenderer.addBox(rpf, list, xmin, xmax, ymin, ymax, zmin, zmax, patchlist);
             models[i] = list.toArray(new RenderPatch[patchlist.length]);
         }
-        
+
         return true;
     }
 
@@ -84,13 +80,14 @@ public class BoxStateRenderer extends CustomRenderer {
     public int getMaximumTextureCount() {
         return 12;
     }
-        
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         return models[ctx.getBlockType().stateIndex];
     }
+
     @Override
     public boolean isOnlyBlockStateSensitive() {
-    	return true;
+        return true;
     }
 }

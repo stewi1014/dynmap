@@ -1,13 +1,14 @@
 package org.dynmap;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.dynmap.servlet.ClientUpdateServlet;
 import org.dynmap.servlet.SendMessageServlet;
 import org.dynmap.utils.IpAddressMatcher;
 import org.json.simple.JSONObject;
-import static org.dynmap.JSONUtils.*;
+
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.dynmap.JSONUtils.s;
 
 public class InternalClientUpdateComponent extends ClientUpdateComponent {
     protected long jsonInterval;
@@ -18,15 +19,15 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
     private ConcurrentHashMap<String, JSONObject> updates = new ConcurrentHashMap<String, JSONObject>();
     private JSONObject clientConfiguration = null;
     private static InternalClientUpdateComponent singleton;
-    
+
     public InternalClientUpdateComponent(final DynmapCore dcore, final ConfigurationNode configuration) {
         super(dcore, configuration);
         dcore.addServlet("/up/world/*", new ClientUpdateServlet(dcore));
 
         if (dcore.isInternalWebServerDisabled) {
-        	Log.severe("Using InternalClientUpdateComponent with disable-webserver=true is not supported: there will likely be problems");        	
+            Log.severe("Using InternalClientUpdateComponent with disable-webserver=true is not supported: there will likely be problems");
         }
-        jsonInterval = (long)(configuration.getFloat("writeinterval", 1) * 1000);
+        jsonInterval = (long) (configuration.getFloat("writeinterval", 1) * 1000);
         final Boolean allowwebchat = configuration.getBoolean("allowwebchat", false);
         final Boolean hidewebchatip = configuration.getBoolean("hidewebchatip", false);
         final Boolean trust_client_name = configuration.getBoolean("trustclientname", false);
@@ -53,8 +54,8 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
         if (allowwebchat) {
             @SuppressWarnings("serial")
             SendMessageServlet messageHandler = new SendMessageServlet() {{
-                maximumMessageInterval = (int)(webchatInterval * 1000);
-                spamMessage = "\""+spammessage+"\"";
+                maximumMessageInterval = (int) (webchatInterval * 1000);
+                spamMessage = "\"" + spammessage + "\"";
                 hideip = hidewebchatip;
                 this.trustclientname = trust_client_name;
                 this.use_player_login_ip = use_player_ip;
@@ -64,16 +65,15 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
                 this.chat_perms = chat_perm;
                 this.lengthlimit = length_limit;
                 this.core = dcore;
-                if(trustedproxy != null) {
-                    for(String s : trustedproxy) {
+                if (trustedproxy != null) {
+                    for (String s : trustedproxy) {
                         this.proxyaddress.add(new IpAddressMatcher(s.trim()));
                     }
-                }
-                else {
+                } else {
                     this.proxyaddress.add(new IpAddressMatcher("127.0.0.1"));
                     this.proxyaddress.add(new IpAddressMatcher("0:0:0:0:0:0:0:1"));
                 }
-                onMessageReceived.addListener(new Event.Listener<Message> () {
+                onMessageReceived.addListener(new Event.Listener<Message>() {
                     @Override
                     public void triggered(Message t) {
                         core.webChat(t.name, t.message);
@@ -86,7 +86,7 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
             @Override
             public void run() {
                 currentTimestamp = System.currentTimeMillis();
-                if(last_confighash != core.getConfigHashcode()) {
+                if (last_confighash != core.getConfigHashcode()) {
                     writeConfiguration();
                 }
                 writeUpdates();
@@ -96,9 +96,10 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
 //                if(core.isLoginSupportEnabled())
 //                    handleRegister();
                 lastTimestamp = currentTimestamp;
-                core.getServer().scheduleServerTask(this, jsonInterval/50);
-            }}, jsonInterval/50);
-        
+                core.getServer().scheduleServerTask(this, jsonInterval / 50);
+            }
+        }, jsonInterval / 50);
+
         core.events.addListener("initialized", new Event.Listener<Object>() {
             @Override
             public void triggered(Object t) {
@@ -117,12 +118,13 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
         /* Initialize */
         writeConfiguration();
         writeUpdates();
-        
+
         singleton = this;
     }
+
     @SuppressWarnings("unchecked")
     protected void writeUpdates() {
-        if(core.mapManager == null) return;
+        if (core.mapManager == null) return;
         //Handles Updates
         for (DynmapWorld dynmapWorld : core.mapManager.getWorlds()) {
             JSONObject update = new JSONObject();
@@ -134,20 +136,23 @@ public class InternalClientUpdateComponent extends ClientUpdateComponent {
             updates.put(dynmapWorld.getName(), update);
         }
     }
+
     protected void writeConfiguration() {
         JSONObject clientConfiguration = new JSONObject();
         core.events.trigger("buildclientconfiguration", clientConfiguration);
         this.clientConfiguration = clientConfiguration;
         last_confighash = core.getConfigHashcode();
     }
+
     public static JSONObject getWorldUpdate(String wname) {
-        if(singleton != null) {
+        if (singleton != null) {
             return singleton.updates.get(wname);
         }
         return null;
     }
+
     public static JSONObject getClientConfig() {
-        if(singleton != null)
+        if (singleton != null)
             return singleton.clientConfiguration;
         return null;
     }

@@ -1,14 +1,9 @@
 package org.dynmap.modsupport.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.dynmap.modsupport.BlockModel;
+
+import java.util.*;
+import java.util.Map.Entry;
 
 public abstract class BlockModelImpl implements BlockModel {
     private int[] ids = new int[0];
@@ -22,13 +17,15 @@ public abstract class BlockModelImpl implements BlockModel {
         addBlockID(blkid);
         this.mdf = mdf;
     }
+
     public BlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         addBlockName(blkname);
         this.mdf = mdf;
     }
-    
+
     /**
      * Add block ID to mapping (in case multiple block IDs use same texture mapping)
+     *
      * @param blockID - block ID
      */
     @Override
@@ -40,13 +37,14 @@ public abstract class BlockModelImpl implements BlockModel {
                     return;
                 }
             }
-            ids = Arrays.copyOf(ids, ids.length+1);
-            ids[ids.length-1] = blockID;
+            ids = Arrays.copyOf(ids, ids.length + 1);
+            ids[ids.length - 1] = blockID;
         }
     }
 
     /**
      * Add block name to mapping (in case multiple block names use same texture mapping)
+     *
      * @param blockname - block name
      */
     @Override
@@ -56,12 +54,13 @@ public abstract class BlockModelImpl implements BlockModel {
                 return;
             }
         }
-        names = Arrays.copyOf(names, names.length+1);
-        names[names.length-1] = blockname;
+        names = Arrays.copyOf(names, names.length + 1);
+        names[names.length - 1] = blockname;
     }
 
     /**
      * Get block IDs
+     *
      * @return configured IDs
      */
     @Override
@@ -72,6 +71,7 @@ public abstract class BlockModelImpl implements BlockModel {
 
     /**
      * Get block names
+     *
      * @return configured names
      */
     @Override
@@ -81,50 +81,56 @@ public abstract class BlockModelImpl implements BlockModel {
 
     /**
      * Set metadata value : default is for all values (data=*).  Setting other values will match only the values that are set
+     *
      * @param data - value to match (-1 = all, 0-15 is meta value to match)
      */
     @Override
     @Deprecated
     public void setMetaValue(int data) {
-    	if (meta == null) {
-    		meta = new BitSet();
-    	}
-    	meta.set(data);
+        if (meta == null) {
+            meta = new BitSet();
+        }
+        meta.set(data);
     }
 
     /**
      * Get matching metadata value mask
+     *
      * @return matching metadata mask: bit N is set if given metadata value matches
      */
     @Override
     @Deprecated
     public int getMetaValueMask() {
-    	if (meta == null) { return METAMASK_ALL; }
-        return (int) meta.toLongArray()[0];	// Only works for 32 flags
+        if (meta == null) {
+            return METAMASK_ALL;
+        }
+        return (int) meta.toLongArray()[0];    // Only works for 32 flags
     }
 
     /**
      * Set matching block state mapping
      * Any key-value pairs included must match, while any not included are assumed to match unconditionall
+     *
      * @param statemap - map of attribute value pairs
      */
     public void setBlockStateMapping(Map<String, String> statemap) {
-    	if (blockstates == null) {
-    		blockstates = new ArrayList<Map<String, String>>();
-    	}
-    	Map<String, String> nmap = new HashMap<String, String>();
-    	nmap.putAll(statemap);
-    	blockstates.add(nmap);
+        if (blockstates == null) {
+            blockstates = new ArrayList<Map<String, String>>();
+        }
+        Map<String, String> nmap = new HashMap<String, String>();
+        nmap.putAll(statemap);
+        blockstates.add(nmap);
     }
+
     /**
      * Get all state mappings accumulated for the block model
      */
     public List<Map<String, String>> getBlockStateMappings() {
-    	return blockstates;
+        return blockstates;
     }
-    
+
     public abstract String getLine();
-    
+
     // This is now getting state mappings too
     protected String getIDsAndMeta() {
         if ((ids.length == 0) && (names.length == 0)) {
@@ -135,8 +141,7 @@ public abstract class BlockModelImpl implements BlockModel {
         for (int i = 0; i < ids.length; i++) {
             if (i == 0) {
                 s += "id=" + ids[i];
-            }
-            else {
+            } else {
                 s += ",id=" + ids[i];
             }
         }
@@ -149,31 +154,32 @@ public abstract class BlockModelImpl implements BlockModel {
         }
         // If we have state data, favor this
         if (this.blockstates != null) {
-        	for (Map<String, String> rec : this.blockstates) {
-        		// If no state, skip
-        		if (rec.size() == 0) { continue; }
-        		s += ",state=";
-        		boolean first = true;
-        		for (Entry<String, String> r : rec.entrySet()) {
-        			if (first) {
-        				first = false;
-        			}
-        			else {
-        				s += '/';
-        			}
-        			s += r.getKey() + ":" + r.getValue();
-        		}
-        	}
+            for (Map<String, String> rec : this.blockstates) {
+                // If no state, skip
+                if (rec.size() == 0) {
+                    continue;
+                }
+                s += ",state=";
+                boolean first = true;
+                for (Entry<String, String> r : rec.entrySet()) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        s += '/';
+                    }
+                    s += r.getKey() + ":" + r.getValue();
+                }
+            }
         }
         // If we have meta data, add this next
         if (this.meta != null) {
-        	for (int i = meta.nextSetBit(0); i != -1; i = meta.nextSetBit(i + 1)) {
-        		s += ",data=" + i;
-        	}
+            for (int i = meta.nextSetBit(0); i != -1; i = meta.nextSetBit(i + 1)) {
+                s += ",data=" + i;
+            }
         }
         // If neither, just state=*
         if ((this.meta == null) && (this.blockstates == null)) {
-        	s += ",state=*";
+            s += ",state=*";
         }
         return s;
     }

@@ -34,20 +34,20 @@ minecraft {
 dependencies {
     implementation project(path: ":DynmapCore", configuration: "shadow")
     implementation project(path: ':DynmapCoreAPI')
-    
+
     minecraft 'net.minecraftforge:forge:1.21-51.0.8'
 }
 
 processResources
-{
-    filesMatching('META-INF/mods.toml') {
-        // replace version and mcversion
-        expand(
-        	version: project.version + '-' + project.ext.buildNumber,
-        	mcversion: "1.21"
-    	)
-    }
-}
+        {
+            filesMatching('META-INF/mods.toml') {
+                // replace version and mcversion
+                expand(
+                        version: project.version + '-' + project.ext.buildNumber,
+                        mcversion: "1.21"
+                )
+            }
+        }
 
 shadowJar {
     dependencies {
@@ -56,8 +56,8 @@ shadowJar {
         exclude("META-INF/maven/**")
         exclude("META-INF/services/**")
     }
-	relocate('org.apache.commons.codec', 'org.dynmap.forge_1_21.commons.codec')
-    
+    relocate('org.apache.commons.codec', 'org.dynmap.forge_1_21.commons.codec')
+
     archiveBaseName = "Dynmap"
     archiveClassifier = "forge-1.21"
     destinationDirectory = file '../target'

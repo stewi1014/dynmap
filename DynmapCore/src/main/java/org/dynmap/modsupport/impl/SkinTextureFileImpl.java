@@ -8,6 +8,7 @@ public class SkinTextureFileImpl extends TextureFileImpl implements SkinTextureF
     public SkinTextureFileImpl(String id, String filename) {
         super(id, filename, TextureFileType.SKIN, 6, 1);
     }
+
     public String getLine() {
         String s = super.getLine();
         s += ",format=SKIN";

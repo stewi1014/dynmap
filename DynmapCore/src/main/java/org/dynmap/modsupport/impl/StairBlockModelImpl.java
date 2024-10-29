@@ -3,11 +3,12 @@ package org.dynmap.modsupport.impl;
 import org.dynmap.modsupport.StairBlockModel;
 
 public class StairBlockModelImpl extends BlockModelImpl implements StairBlockModel {
-    
+
     @Deprecated
     public StairBlockModelImpl(int blkid, ModModelDefinitionImpl mdf) {
         super(blkid, mdf);
     }
+
     public StairBlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         super(blkname, mdf);
     }

@@ -1,14 +1,14 @@
 package org.dynmap.hdmap.renderer;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Map;
-
 import org.dynmap.Log;
 import org.dynmap.renderer.CustomRenderer;
 import org.dynmap.renderer.MapDataContext;
 import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory;
+
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Map;
 
 /**
  * This renderer is used to define a model using a set of 1 or more patches (patch0=x, patch1=x - same syntax as patchblock),
@@ -29,33 +29,33 @@ public class RotatedPatchRenderer extends CustomRenderer {
     private int maxTextureIndex = 0;
     // Indexing attribute
     private String idx_attrib = null;
-    
+
     private String[] tileEntityAttribs = null;
 
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         ArrayList<RenderPatch> patches = new ArrayList<RenderPatch>();
         ArrayList<int[]> rotations = new ArrayList<int[]>();
         /* See if index attribute defined */
         idx_attrib = custparm.get("index");
         /* Now, traverse parameters */
-        for(String k : custparm.keySet()) {
+        for (String k : custparm.keySet()) {
             String v = custparm.get(k);
             /* If it is a patch definition */
-            if(k.startsWith("patch")) {
+            if (k.startsWith("patch")) {
                 try {
                     int id = Integer.parseInt(k.substring(5));
                     RenderPatch p = rpf.getNamedPatch(custparm.get(k), id);
-                    if(p == null) {
+                    if (p == null) {
                         Log.warning("Invalid patch definition: " + v);
                         return false;
                     }
-                    if(p.getTextureIndex() > maxTextureIndex) {
+                    if (p.getTextureIndex() > maxTextureIndex) {
                         maxTextureIndex = p.getTextureIndex();
                     }
-                    while(patches.size() <= id) {
+                    while (patches.size() <= id) {
                         patches.add(null);
                     }
                     patches.set(id, p);
@@ -65,7 +65,7 @@ public class RotatedPatchRenderer extends CustomRenderer {
                 }
             }
             /* If it is a rotation definition */
-            else if(k.startsWith("rot")) {
+            else if (k.startsWith("rot")) {
                 int id;
                 try {
                     id = Integer.parseInt(k.substring(3));
@@ -76,15 +76,14 @@ public class RotatedPatchRenderer extends CustomRenderer {
                 int[] rot = new int[3];
                 String[] rotvals = v.split("/");
                 try {
-                    if(rotvals.length >= 3) {
+                    if (rotvals.length >= 3) {
                         rot[0] = Integer.parseInt(rotvals[0]);
                         rot[1] = Integer.parseInt(rotvals[1]);
                         rot[2] = Integer.parseInt(rotvals[2]);
-                    }
-                    else {
+                    } else {
                         rot[1] = Integer.parseInt(rotvals[0]);
                     }
-                    while(rotations.size() <= id) {
+                    while (rotations.size() <= id) {
                         rotations.add(null);
                     }
                     rotations.set(id, rot);
@@ -95,8 +94,8 @@ public class RotatedPatchRenderer extends CustomRenderer {
             }
         }
         /* Remove missing patches */
-        for(int i = 0; i < patches.size(); i++) {
-            if(patches.get(i) == null) {
+        for (int i = 0; i < patches.size(); i++) {
+            if (patches.get(i) == null) {
                 patches.remove(i);
                 i--;
             }
@@ -105,19 +104,18 @@ public class RotatedPatchRenderer extends CustomRenderer {
         basemodel = patches.toArray(new RenderPatch[patches.size()]);
         /* Now build rotated models for all the defined rotations */
         models = new RenderPatch[rotations.size()][];
-        for(int i = 0; i < rotations.size(); i++) {
+        for (int i = 0; i < rotations.size(); i++) {
             int[] rots = rotations.get(i);
             if (rots == null) continue;  /* Skip default values */
             models[i] = new RenderPatch[basemodel.length];  /* Build list of patches */
-            for(int j = 0; j < basemodel.length; j++) {
+            for (int j = 0; j < basemodel.length; j++) {
                 models[i][j] = rpf.getRotatedPatch(basemodel[j], rots[0], rots[1], rots[2], basemodel[j].getTextureIndex());
             }
         }
-        if(idx_attrib != null) {
+        if (idx_attrib != null) {
             tileEntityAttribs = new String[1];
             tileEntityAttribs[0] = idx_attrib;
-        }
-        else {
+        } else {
             tileEntityAttribs = null;
         }
         return true;
@@ -125,37 +123,36 @@ public class RotatedPatchRenderer extends CustomRenderer {
 
     @Override
     public int getMaximumTextureCount() {
-        return maxTextureIndex+1;
+        return maxTextureIndex + 1;
     }
-    
+
     @Override
     public String[] getTileEntityFieldsNeeded() {
         return tileEntityAttribs;
     }
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         int rotIdx = 0;
-        
+
         /* See if we have rotation index */
-        if(idx_attrib != null) {
+        if (idx_attrib != null) {
             Object idxv = ctx.getBlockTileEntityField(idx_attrib);
-            if(idxv instanceof Number) {
-                rotIdx = ((Number)idxv).intValue();
+            if (idxv instanceof Number) {
+                rotIdx = ((Number) idxv).intValue();
             }
-        }
-        else {  /* Else, use data if no index attribute */
+        } else {  /* Else, use data if no index attribute */
             rotIdx = ctx.getBlockType().stateIndex;
         }
-        if((rotIdx >= 0) && (rotIdx < models.length) && (models[rotIdx] != null)) {
+        if ((rotIdx >= 0) && (rotIdx < models.length) && (models[rotIdx] != null)) {
             return models[rotIdx];
-        }
-        else {
+        } else {
             return basemodel;
         }
     }
+
     @Override
     public boolean isOnlyBlockStateSensitive() {
-    	return idx_attrib == null;
+        return idx_attrib == null;
     }
 }

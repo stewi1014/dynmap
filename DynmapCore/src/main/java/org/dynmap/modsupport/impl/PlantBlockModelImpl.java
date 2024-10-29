@@ -5,12 +5,13 @@ import org.dynmap.renderer.RenderPatchFactory.SideVisible;
 
 public class PlantBlockModelImpl extends BlockModelImpl implements PlantBlockModel {
     private String patch0;
-    
+
     @Deprecated
     public PlantBlockModelImpl(int blkid, ModModelDefinitionImpl mdf) {
         super(blkid, mdf);
         patch0 = mdf.getPatchID(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, SideVisible.FLIP);
     }
+
     public PlantBlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         super(blkname, mdf);
         patch0 = mdf.getPatchID(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, SideVisible.FLIP);

@@ -1,13 +1,13 @@
 package org.dynmap.hdmap.renderer;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Map;
-
 import org.dynmap.renderer.CustomRenderer;
 import org.dynmap.renderer.MapDataContext;
 import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory;
+
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Map;
 
 /**
  * Simple renderer for creating a model representing a normal cube (texture-wise), but with reductions in the X, Y and/or Z ranges
@@ -16,11 +16,11 @@ public class BoxRenderer extends CustomRenderer {
     // Models for rotation values
     private RenderPatch[] model;
     // Patch index ordering, corresponding to BlockStep ordinal order
-    private static final int patchlist[] = { 1, 4, 2, 5, 0, 3 };
+    private static final int patchlist[] = {1, 4, 2, 5, 0, 3};
 
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         double xmin = 0.0, xmax = 1.0;
         double ymin = 0.0, ymax = 1.0;
@@ -60,7 +60,7 @@ public class BoxRenderer extends CustomRenderer {
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
         CustomRenderer.addBox(rpf, list, xmin, xmax, ymin, ymax, zmin, zmax, patchlist);
         model = list.toArray(new RenderPatch[patchlist.length]);
-        
+
         return true;
     }
 
@@ -68,13 +68,14 @@ public class BoxRenderer extends CustomRenderer {
     public int getMaximumTextureCount() {
         return 6;
     }
-        
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         return model;
     }
+
     @Override
     public boolean isOnlyBlockStateSensitive() {
-    	return true;
+        return true;
     }
 }

@@ -10,10 +10,6 @@ import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
-
-import java.util.Arrays;
-import java.util.List;
-
 import org.dynmap.fabric_1_21_1.event.BlockEvents;
 import org.dynmap.fabric_1_21_1.event.ServerChatEvents;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,6 +18,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Mixin(ServerPlayNetworkHandler.class)
 public abstract class ServerPlayNetworkHandlerMixin {
@@ -49,11 +48,10 @@ public abstract class ServerPlayNetworkHandlerMixin {
             cancellable = true
     )
     public void onSignUpdate(UpdateSignC2SPacket packet, List<FilteredMessage> signText, CallbackInfo ci,
-                             ServerWorld serverWorld, BlockPos blockPos, BlockEntity blockEntity, SignBlockEntity signBlockEntity)
-    {
+                             ServerWorld serverWorld, BlockPos blockPos, BlockEntity blockEntity, SignBlockEntity signBlockEntity) {
         // Pull the raw text from the input.
         String[] rawTexts = new String[4];
-        for (int i=0; i<signText.size(); i++)
+        for (int i = 0; i < signText.size(); i++)
             rawTexts[i] = signText.get(i).raw();
 
         // Fire the event.

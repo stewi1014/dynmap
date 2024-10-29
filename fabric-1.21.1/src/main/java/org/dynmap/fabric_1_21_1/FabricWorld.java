@@ -48,9 +48,9 @@ public class FabricWorld extends DynmapWorld {
             return rk.getValue().getNamespace() + "_" + rk.getValue().getPath();
         }
     }
-    
+
     public void updateWorld(World w) {
-    	this.updateWorldHeights(w.getHeight(), w.getBottomY(), w.getSeaLevel());
+        this.updateWorldHeights(w.getHeight(), w.getBottomY(), w.getSeaLevel());
     }
 
     public FabricWorld(DynmapPlugin plugin, World w) {

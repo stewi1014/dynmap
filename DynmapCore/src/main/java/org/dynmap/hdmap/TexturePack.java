@@ -1,63 +1,34 @@
 package org.dynmap.hdmap;
 
-import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
-
-import javax.imageio.ImageIO;
-
-import org.dynmap.Color;
-import org.dynmap.ConfigurationNode;
-import org.dynmap.DynmapCore;
-import org.dynmap.Log;
-import org.dynmap.MapManager;
+import org.dynmap.*;
 import org.dynmap.common.BiomeMap;
 import org.dynmap.common.DynmapCommandSender;
 import org.dynmap.exporter.OBJExport;
 import org.dynmap.renderer.CustomColorMultiplier;
 import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.utils.BlockStateParser;
-import org.dynmap.utils.BlockStep;
-import org.dynmap.utils.BufferOutputStream;
-import org.dynmap.utils.DynIntHashMap;
-import org.dynmap.utils.DynmapBufferedImage;
-import org.dynmap.utils.ForgeConfigFile;
-import org.dynmap.utils.MapIterator;
+import org.dynmap.utils.*;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 /**
  * Loader and processor class for minecraft texture packs
- *  Texture packs are found in dynmap/texturepacks directory, and either are either ZIP files
- *  or are directories whose content matches the structure of a zipped texture pack:
- *    misc/grasscolor.png - tone for grass color, biome sensitive (required)
- *    misc/foliagecolor.png - tone for leaf color, biome sensitive (required)
- *    custom_lava_still.png - custom still lava animation (optional)
- *    custom_lava_flowing.png - custom flowing lava animation (optional)
- *    custom_water_still.png - custom still water animation (optional)
- *    custom_water_flowing.png - custom flowing water animation (optional)
- *    misc/watercolorX.png - custom water color multiplier (optional)
- *    misc/swampgrasscolor.png - tone for grass color in swamps (optional)
- *    misc/swampfoliagecolor.png - tone for leaf color in swamps (optional)
+ * Texture packs are found in dynmap/texturepacks directory, and either are either ZIP files
+ * or are directories whose content matches the structure of a zipped texture pack:
+ * misc/grasscolor.png - tone for grass color, biome sensitive (required)
+ * misc/foliagecolor.png - tone for leaf color, biome sensitive (required)
+ * custom_lava_still.png - custom still lava animation (optional)
+ * custom_lava_flowing.png - custom flowing lava animation (optional)
+ * custom_water_still.png - custom still water animation (optional)
+ * custom_water_flowing.png - custom flowing water animation (optional)
+ * misc/watercolorX.png - custom water color multiplier (optional)
+ * misc/swampgrasscolor.png - tone for grass color in swamps (optional)
+ * misc/swampfoliagecolor.png - tone for leaf color in swamps (optional)
  */
 
 public class TexturePack {
@@ -109,7 +80,7 @@ public class TexturePack {
     public static final int COLORMOD_WATERTONED270 = 20; // WATERTONED + ROT270 
     public static final int COLORMOD_MULTTONED_CLEARINSIDE = 21; // MULTTONED + CLEARINSIDE
     public static final int COLORMOD_FOLIAGEMULTTONED = 22; // FOLIAGETONED + colorMult or custColorMult
-    
+
     private static final int COLORMOD_MULT_FILE = 1000;
     private static final int COLORMOD_MULT_INTERNAL = 1000000;
     /* Special tile index values */
@@ -189,7 +160,7 @@ public class TexturePack {
     private static final int TILEINDEX_SHULKER_BACK = 4;
     private static final int TILEINDEX_SHULKER_BOTTOM = 5;
     private static final int TILEINDEX_SHULKER_COUNT = 6;
-    
+
     /* Indexes of faces in the BED format tile file */
     //private static final int TILEINDEX_BED_HEAD_TOP = 0;
     //private static final int TILEINDEX_BED_HEAD_BOTTOM = 1;
@@ -210,7 +181,7 @@ public class TexturePack {
     //private static final int TILEINDEX_BED_FOOT_RIGHTLEG_1 = 16;
     //private static final int TILEINDEX_BED_FOOT_RIGHTLEG_2 = 17;
     private static final int TILEINDEX_BED_COUNT = 18;
-    
+
     public static enum TileFileFormat {
         GRID,
         CHEST,
@@ -221,118 +192,128 @@ public class TexturePack {
         CUSTOM,
         TILESET,
         BIOME,
-        BED	// 1.13 bed texture
-    };
-    
+        BED    // 1.13 bed texture
+    }
+
+    ;
+
     // Material type: used for setting advanced rendering/export characteristics for image in given file
     // (e.g. reflective surfaces, index of refraction, etc)
     public static enum MaterialType {
         GLASS(1.5, 200, 3),  // Glass material: Ni=1.5, Ns=100, illum=3
         WATER(1.33, 100, 3);  // Water material: Ni=1.33, Ns=95, illum=3
-        
+
         public final double Ni;
         public final double Ns;
         public final int illum;
+
         MaterialType(double Ni, double Ns, int illum) {
             this.Ni = Ni;
             this.Ns = Ns;
             this.illum = illum;
         }
     }
-    
+
     /* Map of 1.5 texture files to 0-255 texture indices */
     private static final String[] terrain_map = {
-        "grass_top", "stone", "dirt", "grass_side", "wood", "stoneslab_side", "stoneslab_top", "brick", 
-        "tnt_side", "tnt_top", "tnt_bottom", "web", "rose", "flower", "portal", "sapling",
-        "stonebrick", "bedrock", "sand", "gravel", "tree_side", "tree_top", "blockIron", "blockGold",
-        "blockDiamond", "blockEmerald", null, null, "mushroom_red", "mushroom_brown", "sapling_jungle", null,
-        "oreGold", "oreIron", "oreCoal", "bookshelf", "stoneMoss", "obsidian", "grass_side_overlay", "tallgrass",
-        null, "beacon", null, "workbench_top", "furnace_front", "furnace_side", "dispenser_front", null,
-        "sponge", "glass", "oreDiamond", "oreRedstone", "leaves", "leaves_opaque", "stonebricksmooth", "deadbush",
-        "fern", null, null, "workbench_side", "workbench_front", "furnace_front_lit", "furnace_top", "sapling_spruce",
-        "cloth_0", "mobSpawner", "snow", "ice", "snow_side", "cactus_top", "cactus_side", "cactus_bottom",
-        "clay", "reeds", "musicBlock", "jukebox_top", "waterlily", "mycel_side", "mycel_top", "sapling_birch",
-        "torch", "doorWood_upper", "doorIron_upper", "ladder", "trapdoor", "fenceIron", "farmland_wet", "farmland_dry",
-        "crops_0", "crops_1", "crops_2", "crops_3", "crops_4", "crops_5", "crops_6", "crops_7",
-        "lever", "doorWood_lower", "doorIron_lower", "redtorch_lit", "stonebricksmooth_mossy", "stonebricksmooth_cracked", "pumpkin_top", "hellrock",
-        "hellsand", "lightgem", "piston_top_sticky", "piston_top", "piston_side", "piston_bottom", "piston_inner_top", "stem_straight",
-        "rail_turn", "cloth_15", "cloth_7", "redtorch", "tree_spruce", "tree_birch", "pumpkin_side", "pumpkin_face",
-        "pumpkin_jack", "cake_top", "cake_side", "cake_inner", "cake_bottom", "mushroom_skin_red", "mushroom_skin_brown", "stem_bent",
-        "rail", "cloth_14", "cloth_6", "repeater", "leaves_spruce", "leaves_spruce_opaque", "bed_feet_top", "bed_head_top",
-        "melon_side", "melon_top", "cauldron_top", "cauldron_inner", null, "mushroom_skin_stem", "mushroom_inside", "vine",
-        "blockLapis", "cloth_13", "cloth_5", "repeater_lit", "thinglass_top", "bed_feet_end", "bed_feet_side", "bed_head_side",
-        "bed_head_end", "tree_jungle", "cauldron_side", "cauldron_bottom", "brewingStand_base", "brewingStand", "endframe_top", "endframe_side",
-        "oreLapis", "cloth_12", "cloth_4", "goldenRail", "redstoneDust_cross", "redstoneDust_line", "enchantment_top", "dragonEgg",
-        "cocoa_2", "cocoa_1", "cocoa_0", "oreEmerald", "tripWireSource", "tripWire", "endframe_eye", "whiteStone",
-        "sandstone_top", "cloth_11", "cloth_3", "goldenRail_powered", "redstoneDust_cross_overlay", "redstoneDust_line_overlay", "enchantment_side", "enchantment_bottom",
-        "commandBlock", "itemframe_back", "flowerPot", null, null, null, null, null,
-        "sandstone_side", "cloth_10", "cloth_2", "detectorRail", "leaves_jungle", "leaves_jungle_opaque", "wood_spruce", "wood_jungle",
-        "carrots_0", "carrots_1", "carrots_2", "carrots_3", "potatoes_3", null, null, null,
-        "sandstone_bottom", "cloth_9", "cloth_1", "redstoneLight", "redstoneLight_lit", "stonebricksmooth_carved", "wood_birch", "anvil_base",
-        "anvil_top_damaged_1", null, null, null, null, null, null, null,
-        "netherBrick", "cloth_8", "netherStalk_0", "netherStalk_1", "netherStalk_2", "sandstone_carved", "sandstone_smooth", "anvil_top",
-        "anvil_top_damaged_2", null, null, null, null, null, null, null,
-        "destroy_0", "destroy_1", "destroy_2", "destroy_3", "destroy_4", "destroy_5", "destroy_6", "destroy_7",
-        "destroy_8", "destroy_9", null, null, null, null, null, null,
-        /* Extra 1.5-based textures: starting at 256 (corresponds to TILEINDEX_ values) */
-        null, "water", "water_flow", "lava", "lava_flow", null, null, null, 
-        null, "fire_0", "portal"
+            "grass_top", "stone", "dirt", "grass_side", "wood", "stoneslab_side", "stoneslab_top", "brick",
+            "tnt_side", "tnt_top", "tnt_bottom", "web", "rose", "flower", "portal", "sapling",
+            "stonebrick", "bedrock", "sand", "gravel", "tree_side", "tree_top", "blockIron", "blockGold",
+            "blockDiamond", "blockEmerald", null, null, "mushroom_red", "mushroom_brown", "sapling_jungle", null,
+            "oreGold", "oreIron", "oreCoal", "bookshelf", "stoneMoss", "obsidian", "grass_side_overlay", "tallgrass",
+            null, "beacon", null, "workbench_top", "furnace_front", "furnace_side", "dispenser_front", null,
+            "sponge", "glass", "oreDiamond", "oreRedstone", "leaves", "leaves_opaque", "stonebricksmooth", "deadbush",
+            "fern", null, null, "workbench_side", "workbench_front", "furnace_front_lit", "furnace_top", "sapling_spruce",
+            "cloth_0", "mobSpawner", "snow", "ice", "snow_side", "cactus_top", "cactus_side", "cactus_bottom",
+            "clay", "reeds", "musicBlock", "jukebox_top", "waterlily", "mycel_side", "mycel_top", "sapling_birch",
+            "torch", "doorWood_upper", "doorIron_upper", "ladder", "trapdoor", "fenceIron", "farmland_wet", "farmland_dry",
+            "crops_0", "crops_1", "crops_2", "crops_3", "crops_4", "crops_5", "crops_6", "crops_7",
+            "lever", "doorWood_lower", "doorIron_lower", "redtorch_lit", "stonebricksmooth_mossy", "stonebricksmooth_cracked", "pumpkin_top", "hellrock",
+            "hellsand", "lightgem", "piston_top_sticky", "piston_top", "piston_side", "piston_bottom", "piston_inner_top", "stem_straight",
+            "rail_turn", "cloth_15", "cloth_7", "redtorch", "tree_spruce", "tree_birch", "pumpkin_side", "pumpkin_face",
+            "pumpkin_jack", "cake_top", "cake_side", "cake_inner", "cake_bottom", "mushroom_skin_red", "mushroom_skin_brown", "stem_bent",
+            "rail", "cloth_14", "cloth_6", "repeater", "leaves_spruce", "leaves_spruce_opaque", "bed_feet_top", "bed_head_top",
+            "melon_side", "melon_top", "cauldron_top", "cauldron_inner", null, "mushroom_skin_stem", "mushroom_inside", "vine",
+            "blockLapis", "cloth_13", "cloth_5", "repeater_lit", "thinglass_top", "bed_feet_end", "bed_feet_side", "bed_head_side",
+            "bed_head_end", "tree_jungle", "cauldron_side", "cauldron_bottom", "brewingStand_base", "brewingStand", "endframe_top", "endframe_side",
+            "oreLapis", "cloth_12", "cloth_4", "goldenRail", "redstoneDust_cross", "redstoneDust_line", "enchantment_top", "dragonEgg",
+            "cocoa_2", "cocoa_1", "cocoa_0", "oreEmerald", "tripWireSource", "tripWire", "endframe_eye", "whiteStone",
+            "sandstone_top", "cloth_11", "cloth_3", "goldenRail_powered", "redstoneDust_cross_overlay", "redstoneDust_line_overlay", "enchantment_side", "enchantment_bottom",
+            "commandBlock", "itemframe_back", "flowerPot", null, null, null, null, null,
+            "sandstone_side", "cloth_10", "cloth_2", "detectorRail", "leaves_jungle", "leaves_jungle_opaque", "wood_spruce", "wood_jungle",
+            "carrots_0", "carrots_1", "carrots_2", "carrots_3", "potatoes_3", null, null, null,
+            "sandstone_bottom", "cloth_9", "cloth_1", "redstoneLight", "redstoneLight_lit", "stonebricksmooth_carved", "wood_birch", "anvil_base",
+            "anvil_top_damaged_1", null, null, null, null, null, null, null,
+            "netherBrick", "cloth_8", "netherStalk_0", "netherStalk_1", "netherStalk_2", "sandstone_carved", "sandstone_smooth", "anvil_top",
+            "anvil_top_damaged_2", null, null, null, null, null, null, null,
+            "destroy_0", "destroy_1", "destroy_2", "destroy_3", "destroy_4", "destroy_5", "destroy_6", "destroy_7",
+            "destroy_8", "destroy_9", null, null, null, null, null, null,
+            /* Extra 1.5-based textures: starting at 256 (corresponds to TILEINDEX_ values) */
+            null, "water", "water_flow", "lava", "lava_flow", null, null, null,
+            null, "fire_0", "portal"
     };
 
     /* Map of 1.6 resource files to 0-255 texture indices */
     private static final String[] terrain_rp_map = {
-        "grass_top", "stone", "dirt", "grass_side", "planks_oak", "stone_slab_side", "stone_slab_top", "brick", 
-        "tnt_side", "tnt_top", "tnt_bottom", "web", "flower_rose", "flower_dandelion", "portal", "sapling_oak",
-        "cobblestone", "bedrock", "sand", "gravel", "log_oak", "log_oak_top", "iron_block", "gold_block",
-        "diamond_block", "emerald_block", null, null, "mushroom_red", "mushroom_brown", "sapling_jungle", null,
-        "gold_ore", "iron_ore", "coal_ore", "bookshelf", "cobblestone_mossy", "obsidian", "grass_side_overlay", "tallgrass",
-        null, "beacon", null, "crafting_table_top", "furnace_front_off", "furnace_side", "dispenser_front_horizontal", null,
-        "sponge", "glass", "diamond_ore", "redstone_ore", "leaves_oak", "leaves_oak_opaque", "stonebrick", "deadbush",
-        "fern", null, null, "crafting_table_side", "crafting_table_front", "furnace_front_on", "furnace_top", "sapling_spruce",
-        "wool_colored_white", "mob_spawner", "snow", "ice", "grass_side_snowed", "cactus_top", "cactus_side", "cactus_bottom",
-        "clay", "reeds", "jukebox_side", "jukebox_top", "waterlily", "mycelium_side", "mycelium_top", "sapling_birch",
-        "torch_on", "door_wood_upper", "door_iron_upper", "ladder", "trapdoor", "iron_bars", "farmland_wet", "farmland_dry",
-        "wheat_stage_0", "wheat_stage_1", "wheat_stage_2", "wheat_stage_3", "wheat_stage_4", "wheat_stage_5", "wheat_stage_6", "wheat_stage_7",
-        "lever", "door_wood_lower", "door_iron_lower", "redstone_torch_on", "stonebrick_mossy", "stonebrick_cracked", "pumpkin_top", "netherrack",
-        "soul_sand", "glowstone", "piston_top_sticky", "piston_top_normal", "piston_side", "piston_bottom", "piston_inner", "pumpkin_stem_disconnected",
-        "rail_normal_turned", "wool_colored_black", "wool_colored_gray", "redstone_torch_off", "log_spruce", "log_birch", "pumpkin_side", "pumpkin_face_off",
-        "pumpkin_face_on", "cake_top", "cake_side", "cake_inner", "cake_bottom", "mushroom_block_skin_red", "mushroom_block_skin_brown", "pumpkin_stem_connected",
-        "rail_normal", "wool_colored_red", "wool_colored_pink", "repeater_off", "leaves_spruce", "leaves_spruce_opaque", "bed_feet_top", "bed_head_top",
-        "melon_side", "melon_top", "cauldron_top", "cauldron_inner", null, "mushroom_block_skin_stem", "mushroom_block_inside", "vine",
-        "lapis_block", "wool_colored_green", "wool_colored_lime", "repeater_on", "glass_pane_top", "bed_feet_end", "bed_feet_side", "bed_head_side",
-        "bed_head_end", "log_jungle", "cauldron_side", "cauldron_bottom", "brewing_stand_base", "brewing_stand", "endframe_top", "endframe_side",
-        "lapis_ore", "wool_colored_brown", "wool_colored_yellow", "rail_golden", "redstone_dust_cross", "redstone_dust_line", "enchanting_table_top", "dragon_egg",
-        "cocoa_stage_2", "cocoa_stage_1", "cocoa_stage_0", "emerald_ore", "trip_wire_source", "trip_wire", "endframe_eye", "end_stone",
-        "sandstone_top", "wool_colored_blue", "wool_colored_light_blue", "rail_golden_powered", "redstone_dust_cross_overlay", "redstone_dust_line_overlay", "enchanting_table_side", "enchanting_table_bottom",
-        "command_block", "itemframe_background", "flower_pot", null, null, null, null, null,
-        "sandstone_normal", "wool_colored_purple", "wool_colored_magenta", "rail_detector", "leaves_jungle", "leaves_jungle_opaque", "planks_spruce", "planks_jungle",
-        "carrots_stage_0", "carrots_stage_1", "carrots_stage_2", "carrots_stage_3", "potatoes_stage_3", null, null, null,
-        "sandstone_bottom", "wool_colored_cyan", "wool_colored_orange", "redstone_lamp_off", "redstone_lamp_on", "stonebrick_carved", "planks_birch", "anvil_base",
-        "anvil_top_damaged_1", null, null, null, null, null, null, null,
-        "nether_brick", "wool_colored_silver", "nether_wart_stage_0", "nether_wart_stage_1", "nether_wart_stage_2", "sandstone_carved", "sandstone_smooth", "anvil_top_damaged_0",
-        "anvil_top_damaged_2", null, null, null, null, null, null, null,
-        "destroy_stage_0", "destroy_stage_1", "destroy_stage_2", "destroy_stage_3", "destroy_stage_4", "destroy_stage_5", "destroy_stage_6", "destroy_stage_7",
-        "destroy_stage_8", "destroy_stage_9", null, null, null, null, null, null,
-        /* Extra 1.5-based textures: starting at 256 (corresponds to TILEINDEX_ values) */
-        null, "water_still", "water_flow", "lava_still", "lava_flow", null, null, null, 
-        null, "fire_layer_0", "portal"
+            "grass_top", "stone", "dirt", "grass_side", "planks_oak", "stone_slab_side", "stone_slab_top", "brick",
+            "tnt_side", "tnt_top", "tnt_bottom", "web", "flower_rose", "flower_dandelion", "portal", "sapling_oak",
+            "cobblestone", "bedrock", "sand", "gravel", "log_oak", "log_oak_top", "iron_block", "gold_block",
+            "diamond_block", "emerald_block", null, null, "mushroom_red", "mushroom_brown", "sapling_jungle", null,
+            "gold_ore", "iron_ore", "coal_ore", "bookshelf", "cobblestone_mossy", "obsidian", "grass_side_overlay", "tallgrass",
+            null, "beacon", null, "crafting_table_top", "furnace_front_off", "furnace_side", "dispenser_front_horizontal", null,
+            "sponge", "glass", "diamond_ore", "redstone_ore", "leaves_oak", "leaves_oak_opaque", "stonebrick", "deadbush",
+            "fern", null, null, "crafting_table_side", "crafting_table_front", "furnace_front_on", "furnace_top", "sapling_spruce",
+            "wool_colored_white", "mob_spawner", "snow", "ice", "grass_side_snowed", "cactus_top", "cactus_side", "cactus_bottom",
+            "clay", "reeds", "jukebox_side", "jukebox_top", "waterlily", "mycelium_side", "mycelium_top", "sapling_birch",
+            "torch_on", "door_wood_upper", "door_iron_upper", "ladder", "trapdoor", "iron_bars", "farmland_wet", "farmland_dry",
+            "wheat_stage_0", "wheat_stage_1", "wheat_stage_2", "wheat_stage_3", "wheat_stage_4", "wheat_stage_5", "wheat_stage_6", "wheat_stage_7",
+            "lever", "door_wood_lower", "door_iron_lower", "redstone_torch_on", "stonebrick_mossy", "stonebrick_cracked", "pumpkin_top", "netherrack",
+            "soul_sand", "glowstone", "piston_top_sticky", "piston_top_normal", "piston_side", "piston_bottom", "piston_inner", "pumpkin_stem_disconnected",
+            "rail_normal_turned", "wool_colored_black", "wool_colored_gray", "redstone_torch_off", "log_spruce", "log_birch", "pumpkin_side", "pumpkin_face_off",
+            "pumpkin_face_on", "cake_top", "cake_side", "cake_inner", "cake_bottom", "mushroom_block_skin_red", "mushroom_block_skin_brown", "pumpkin_stem_connected",
+            "rail_normal", "wool_colored_red", "wool_colored_pink", "repeater_off", "leaves_spruce", "leaves_spruce_opaque", "bed_feet_top", "bed_head_top",
+            "melon_side", "melon_top", "cauldron_top", "cauldron_inner", null, "mushroom_block_skin_stem", "mushroom_block_inside", "vine",
+            "lapis_block", "wool_colored_green", "wool_colored_lime", "repeater_on", "glass_pane_top", "bed_feet_end", "bed_feet_side", "bed_head_side",
+            "bed_head_end", "log_jungle", "cauldron_side", "cauldron_bottom", "brewing_stand_base", "brewing_stand", "endframe_top", "endframe_side",
+            "lapis_ore", "wool_colored_brown", "wool_colored_yellow", "rail_golden", "redstone_dust_cross", "redstone_dust_line", "enchanting_table_top", "dragon_egg",
+            "cocoa_stage_2", "cocoa_stage_1", "cocoa_stage_0", "emerald_ore", "trip_wire_source", "trip_wire", "endframe_eye", "end_stone",
+            "sandstone_top", "wool_colored_blue", "wool_colored_light_blue", "rail_golden_powered", "redstone_dust_cross_overlay", "redstone_dust_line_overlay", "enchanting_table_side", "enchanting_table_bottom",
+            "command_block", "itemframe_background", "flower_pot", null, null, null, null, null,
+            "sandstone_normal", "wool_colored_purple", "wool_colored_magenta", "rail_detector", "leaves_jungle", "leaves_jungle_opaque", "planks_spruce", "planks_jungle",
+            "carrots_stage_0", "carrots_stage_1", "carrots_stage_2", "carrots_stage_3", "potatoes_stage_3", null, null, null,
+            "sandstone_bottom", "wool_colored_cyan", "wool_colored_orange", "redstone_lamp_off", "redstone_lamp_on", "stonebrick_carved", "planks_birch", "anvil_base",
+            "anvil_top_damaged_1", null, null, null, null, null, null, null,
+            "nether_brick", "wool_colored_silver", "nether_wart_stage_0", "nether_wart_stage_1", "nether_wart_stage_2", "sandstone_carved", "sandstone_smooth", "anvil_top_damaged_0",
+            "anvil_top_damaged_2", null, null, null, null, null, null, null,
+            "destroy_stage_0", "destroy_stage_1", "destroy_stage_2", "destroy_stage_3", "destroy_stage_4", "destroy_stage_5", "destroy_stage_6", "destroy_stage_7",
+            "destroy_stage_8", "destroy_stage_9", null, null, null, null, null, null,
+            /* Extra 1.5-based textures: starting at 256 (corresponds to TILEINDEX_ values) */
+            null, "water_still", "water_flow", "lava_still", "lava_flow", null, null, null,
+            null, "fire_layer_0", "portal"
     };
 
     private static class CustomTileRec {
         int srcx, srcy, width, height, targetx, targety;
-        public CustomTileRec() {}
-        public CustomTileRec(int srcx, int srcy, int width, int height, int targetx, int targety) {
-        	this.srcx = srcx; this.srcy = srcy;
-        	this.width = width; this.height = height;
-        	this.targetx = targetx; this.targety = targety;
+
+        public CustomTileRec() {
         }
+
+        public CustomTileRec(int srcx, int srcy, int width, int height, int targetx, int targety) {
+            this.srcx = srcx;
+            this.srcy = srcy;
+            this.width = width;
+            this.height = height;
+            this.targetx = targetx;
+            this.targety = targety;
+        }
+
         public CustomTileRec(int srcx, int srcy, int width, int height) {
-        	this(srcx, srcy, width, height, 0, 0);
+            this(srcx, srcy, width, height, 0, 0);
         }
     }
-    
-    private static int next_dynamic_tile = MAX_TILEINDEX+1;
-    
+
+    private static int next_dynamic_tile = MAX_TILEINDEX + 1;
+
     private static class DynamicTileFile {
         int idx;                    /* Index of tile in addonfiles */
         String filename;
@@ -345,6 +326,7 @@ public class TexturePack {
         boolean used;               // Set to true if any active references to the file
         MaterialType material;      // Material type, if specified
     }
+
     private static ArrayList<DynamicTileFile> addonfiles = new ArrayList<DynamicTileFile>();
     private static Map<String, DynamicTileFile> addonfilesbyname = new HashMap<String, DynamicTileFile>();
     private Map<Integer, MaterialType> materialbytileid = new HashMap<Integer, MaterialType>();
@@ -352,7 +334,7 @@ public class TexturePack {
     private Map<String, Integer> tileIDByMatID = new HashMap<String, Integer>();
     // Mods supplying their own texture files
     private static HashSet<String> loadedmods = new HashSet<String>();
-    
+
     private static String getBlockFileName(int idx) {
         if ((idx >= 0) && (idx < terrain_map.length) && (terrain_map[idx] != null)) {
             return "textures/blocks/" + terrain_map[idx] + ".png";
@@ -369,16 +351,16 @@ public class TexturePack {
 
     /* Reset add-on tile data */
     private static void resetFiles(DynmapCore core) {
-        synchronized(packlock) {
+        synchronized (packlock) {
             packs.clear();
         }
         addonfiles.clear();
         addonfilesbyname.clear();
         loadedmods.clear();
-        next_dynamic_tile = MAX_TILEINDEX+1;
-        
+        next_dynamic_tile = MAX_TILEINDEX + 1;
+
         /* Now, load entries for vanilla v1.6.x RP files */
-        for(int i = 0; i < terrain_rp_map.length; i++) {
+        for (int i = 0; i < terrain_rp_map.length; i++) {
             String fn = getRPFileName(i);
             if (fn != null) {
                 int idx = findOrAddDynamicTileFile(fn, null, 1, 1, TileFileFormat.GRID, new String[0]);
@@ -390,7 +372,7 @@ public class TexturePack {
             }
         }
         /* Now, load entries for vanilla v1.5.x files (put second so that add-on TP overrides built in RP) */
-        for(int i = 0; i < terrain_map.length; i++) {
+        for (int i = 0; i < terrain_map.length; i++) {
             String fn = getBlockFileName(i);
             if (fn != null) {
                 int idx = findOrAddDynamicTileFile(fn, null, 1, 1, TileFileFormat.GRID, new String[0]);
@@ -402,21 +384,21 @@ public class TexturePack {
             }
         }
     }
-    
+
     private static class LoadedImage {
         int[] argb;
         int width, height;
         int trivial_color;
         boolean isLoaded;
         @SuppressWarnings("unused")
-		String fname, modid;
-    }    
-    
-    private int[][]   tile_argb;
+        String fname, modid;
+    }
+
+    private int[][] tile_argb;
     private int[] blank;
     private int native_scale;
     private CTMTexturePack ctm;
-//    private static BitSet hasBaseBlockColoring = new BitSet(); // Quick lookup - (blockID << 4) + blockMeta - set if custom colorizer
+    //    private static BitSet hasBaseBlockColoring = new BitSet(); // Quick lookup - (blockID << 4) + blockMeta - set if custom colorizer
 //    private static DynIntHashMap baseBlockColoring = new DynIntHashMap();   // Base block coloring (RP independent)
     // Need copy, since RP can change this....
     private ColorizingData blockColoring = HDBlockStateTextureMap.getColorizingData();
@@ -424,7 +406,7 @@ public class TexturePack {
     private int colorMultBirch = 0x80a755;  /* From ColorizerFoliage.java in MCP */
     private int colorMultPine = 0x619961;   /* From ColorizerFoliage.java in MCP */
     private int colorMultLily = 0x208030;   /* from BlockLilyPad.java in MCP */
-    
+
     private static final int IMG_GRASSCOLOR = 0;
     private static final int IMG_FOLIAGECOLOR = 1;
     private static final int IMG_CUSTOMWATERMOVING = 2;
@@ -436,39 +418,41 @@ public class TexturePack {
     private static final int IMG_SWAMPFOLIAGECOLOR = 8;
     private static final int IMG_PINECOLOR = 9;
     private static final int IMG_BIRCHCOLOR = 10;
-    
+
     private static final int IMG_CNT = 11;
     /* 0-(IMG_CNT-1) are fixed, IMG_CNT+x is dynamic file x */
     private LoadedImage[] imgs;
 
     private HashMap<Integer, TexturePack> scaled_textures;
     private Object scaledlock = new Object();
-    
+
     public enum BlockTransparency {
         OPAQUE, /* Block is opaque - blocks light - lit by light from adjacent blocks */
-        TRANSPARENT,    /* Block is transparent - passes light - lit by light level in own block */ 
+        TRANSPARENT,    /* Block is transparent - passes light - lit by light level in own block */
         SEMITRANSPARENT, /* Opaque block that doesn't block all rays (steps, slabs) - use light above for face lighting on opaque blocks */
         LEAVES /* Special case of transparent, to work around lighting errors in SpoutPlugin */
     }
-    
+
     public static class ColorizingData {
         private DynIntHashMap map = new DynIntHashMap();
-        
+
         public void setBlkStateValue(DynmapBlockState blk, Integer mapidx) {
             int idx = blk.globalStateIndex;
             if (mapidx == null) {
                 map.remove(idx);
-            }
-            else {
-                map.put(idx,  mapidx);
+            } else {
+                map.put(idx, mapidx);
             }
         }
+
         public Integer getBlkStateValue(DynmapBlockState blk) {
             return (Integer) map.get(blk.globalStateIndex);
         }
+
         public boolean hasBlkStateValue(DynmapBlockState blk) {
             return map.containsKey(blk.globalStateIndex);
         }
+
         public void scrubValues(Integer val) {
             List<Integer> badvals = map.keysWithValue(val);
             for (Integer v : badvals) {
@@ -476,7 +460,7 @@ public class TexturePack {
             }
         }
     }
-    
+
     /**
      * Texture map - used for accumulation of textures from different sources, keyed by lookup value
      */
@@ -489,8 +473,9 @@ public class TexturePack {
         private CustomColorMultiplier custColorMult = null;
         private String blockset;
 
-        public TextureMap() { }
-        
+        public TextureMap() {
+        }
+
         public int addTextureByKey(int key, int textureid) {
             int off = texture_ids.size();   /* Next index in array is texture index */
             texture_ids.add(textureid); /* Add texture ID to list */
@@ -498,28 +483,34 @@ public class TexturePack {
             return off;
         }
     }
+
     private static HashMap<String, TextureMap> textmap_by_id = new HashMap<String, TextureMap>();
-    
+
     /**
      * Set tile ARGB buffer at index
+     *
      * @param idx - index of tile
      * @param buf - buffer to be set
      */
     public final void setTileARGB(int idx, int[] buf) {
         if (idx >= tile_argb.length) {
-            tile_argb = Arrays.copyOf(tile_argb, 3*idx/2);
+            tile_argb = Arrays.copyOf(tile_argb, 3 * idx / 2);
         }
         tile_argb[idx] = buf;
     }
+
     /**
      * Get number of entries in tile list
+     *
      * @return length of tile list
      */
     public final int getTileARGBCount() {
         return tile_argb.length;
     }
+
     /**
      * Get tile ARGB buffer at index
+     *
      * @param idx - tile index
      * @return ARGB array for tile, or blank array if not found
      */
@@ -533,62 +524,68 @@ public class TexturePack {
         }
         return rslt;
     }
+
     /**
      * Add texture to texture map
      */
     private static int addTextureByKey(String id, int key, int textureid) {
         TextureMap idx = textmap_by_id.get(id);
-        if(idx == null) {   /* Add empty one, if not found */
+        if (idx == null) {   /* Add empty one, if not found */
             idx = new TextureMap();
-            textmap_by_id.put(id,  idx);
+            textmap_by_id.put(id, idx);
         }
         return idx.addTextureByKey(key, textureid);
     }
+
     /**
      * Add settings for texture map
      */
     private static void addTextureIndex(String id, Map<DynmapBlockState, BitSet> states, BlockTransparency trans, int colorMult, CustomColorMultiplier custColorMult, String blockset) {
         TextureMap idx = textmap_by_id.get(id);
-        if(idx == null) {   /* Add empty one, if not found */
+        if (idx == null) {   /* Add empty one, if not found */
             idx = new TextureMap();
-            textmap_by_id.put(id,  idx);
+            textmap_by_id.put(id, idx);
         }
         idx.states = states;
         idx.trans = trans;
         idx.colorMult = colorMult;
         idx.custColorMult = custColorMult;
     }
+
     /**
      * Finish processing of texture indexes - add to texture maps
      */
     private static void processTextureMaps() {
-        for(TextureMap ti : textmap_by_id.values()) {
-            if(ti.states.isEmpty()) continue;
+        for (TextureMap ti : textmap_by_id.values()) {
+            if (ti.states.isEmpty()) continue;
             int[] txtids = new int[ti.texture_ids.size()];
-            for(int i = 0; i < txtids.length; i++) {
+            for (int i = 0; i < txtids.length; i++) {
                 txtids[i] = ti.texture_ids.get(i).intValue();
             }
             HDBlockStateTextureMap map = new HDBlockStateTextureMap(txtids, null, ti.colorMult, ti.custColorMult, ti.blockset, true, null, ti.trans);
             map.addToTable(ti.states);
         }
     }
+
     /**
      * Get index of texture in texture map
-     * @param id - texture pack id
+     *
+     * @param id  - texture pack id
      * @param key - key for texture
      * @return index of texture, or -1 if not found
      */
     public static int getTextureIndexFromTextureMap(String id, int key) {
         int idx = -1;
         TextureMap map = textmap_by_id.get(id);
-        if(map != null) {
+        if (map != null) {
             Integer txtidx = map.key_to_index.get(key);
-            if(txtidx != null) {
+            if (txtidx != null) {
                 idx = txtidx.intValue();
             }
         }
         return idx;
     }
+
     /*
      * Get count of textures in given texture map
      * @param id - texture pack ID
@@ -596,21 +593,23 @@ public class TexturePack {
      */
     public static int getTextureMapLength(String id) {
         TextureMap map = textmap_by_id.get(id);
-        if(map != null) {
+        if (map != null) {
             return map.texture_ids.size();
         }
         return -1;
     }
-    /** 
+
+    /**
      * Get or load texture pack
-     * @param core - core object
+     *
+     * @param core   - core object
      * @param tpname - texture pack name
      * @return loaded texture pack, or null if error
      */
     public static TexturePack getTexturePack(DynmapCore core, String tpname) {
-        synchronized(packlock) {
+        synchronized (packlock) {
             TexturePack tp = packs.get(tpname);
-            if(tp != null)
+            if (tp != null)
                 return tp;
             try {
                 tp = new TexturePack(core, tpname);   /* Attempt to load pack */
@@ -622,7 +621,7 @@ public class TexturePack {
             return null;
         }
     }
-    
+
     /**
      * Constructor for texture pack, by name
      */
@@ -644,25 +643,23 @@ public class TexturePack {
                 tpl.closeResource(is);
                 is_rp = true;
                 Log.info("Loading resource pack " + f.getName());
-            }
-            else if(tpname.equals("standard")) { // Built in is RP
+            } else if (tpname.equals("standard")) { // Built in is RP
                 is_rp = true;
                 Log.info("Loading default resource pack");
-            }
-            else {
+            } else {
                 Log.info("Loading texture pack " + f.getName());
             }
             /* Load CTM support, if enabled */
-            if(core.isCTMSupportEnabled()) {
+            if (core.isCTMSupportEnabled()) {
                 ctm = new CTMTexturePack(tpl, this, core, is_rp);
-                if(ctm.isValid() == false) {
+                if (ctm.isValid() == false) {
                     ctm = null;
                 }
             }
             String fn;
             /* Load custom colors support, if enabled */
-            if(core.isCustomColorsSupportEnabled()) {
-                fn = (is_rp?"assets/minecraft/mcpatcher/color.properties":"color.properties");
+            if (core.isCustomColorsSupportEnabled()) {
+                fn = (is_rp ? "assets/minecraft/mcpatcher/color.properties" : "color.properties");
                 is = tpl.openTPResource(fn);
                 Properties p;
                 if (is != null) {
@@ -676,18 +673,17 @@ public class TexturePack {
                 }
             }
             /* Loop through dynamic files */
-            for(int i = 0; i < addonfiles.size(); i++) {
+            for (int i = 0; i < addonfiles.size(); i++) {
                 DynamicTileFile dtf = addonfiles.get(i);
                 if (dtf.used == false) {    // Not used, skip it - save memory and avoid errors for downlevel mods and such
                     continue;
                 }
                 is = tpl.openModTPResource(dtf.filename, dtf.modname);
                 try {
-                    if(dtf.format == TileFileFormat.BIOME) {
-                      loadBiomeShadingImage(is, i+IMG_CNT, dtf.filename, dtf.modname); /* Load image file */
-                    }
-                    else
-                        loadImage(is, i+IMG_CNT, dtf.filename, dtf.modname); /* Load image file */
+                    if (dtf.format == TileFileFormat.BIOME) {
+                        loadBiomeShadingImage(is, i + IMG_CNT, dtf.filename, dtf.modname); /* Load image file */
+                    } else
+                        loadImage(is, i + IMG_CNT, dtf.filename, dtf.modname); /* Load image file */
                 } finally {
                     tpl.closeResource(is);
                 }
@@ -780,7 +776,7 @@ public class TexturePack {
                 patchTextureWithImage(IMG_CUSTOMWATERMOVING, TILEINDEX_MOVINGWATER);
             }
             /* Loop through dynamic files */
-            for(int i = 0; i < addonfiles.size(); i++) {
+            for (int i = 0; i < addonfiles.size(); i++) {
                 DynamicTileFile dtf = addonfiles.get(i);
                 processDynamicImage(i, dtf.format);
             }
@@ -788,69 +784,81 @@ public class TexturePack {
             Log.severe("Error loadling texture pack", iox);
         } finally {
             if (is != null) {
-                try { is.close(); } catch (IOException iox) {}
+                try {
+                    is.close();
+                } catch (IOException iox) {
+                }
                 is = null;
             }
             tpl.close();
         }
     }
+
     /**
      * Copy subimage from portions of given image
-     * @param img_id - image ID of raw image
-     * @param from_x - top-left X
-     * @param from_y - top-left Y
-     * @param to_x - dest topleft
-     * @param to_y - dest topleft
-     * @param width - width to copy
-     * @param height - height to copy
-     * @param dest_argb - destination tile buffer
+     *
+     * @param img_id     - image ID of raw image
+     * @param from_x     - top-left X
+     * @param from_y     - top-left Y
+     * @param to_x       - dest topleft
+     * @param to_y       - dest topleft
+     * @param width      - width to copy
+     * @param height     - height to copy
+     * @param dest_argb  - destination tile buffer
      * @param dest_width - width of destination tile buffer
      */
     private void copySubimageFromImage(int img_id, int from_x, int from_y, int to_x, int to_y, int width, int height, int[] dest_argb, int dest_width) {
-        for(int h = 0; h < height; h++) {
-        	try {
-        		System.arraycopy(imgs[img_id].argb, (h+from_y)*imgs[img_id].width + from_x, dest_argb, dest_width*(h+to_y) + to_x, width);
-        	} catch (ArrayIndexOutOfBoundsException aoobx) {
-        		Log.warning(String.format("Error copying subimage: img_id=%s, from=%d,%s, to=%d,%d, size=%d,%d, dest=%d,%d", 
-    				imgs[img_id].fname, from_x, from_y, to_x, to_y, width, height, dest_width, dest_argb.length / dest_width));
-        	}
+        for (int h = 0; h < height; h++) {
+            try {
+                System.arraycopy(imgs[img_id].argb, (h + from_y) * imgs[img_id].width + from_x, dest_argb, dest_width * (h + to_y) + to_x, width);
+            } catch (ArrayIndexOutOfBoundsException aoobx) {
+                Log.warning(String.format("Error copying subimage: img_id=%s, from=%d,%s, to=%d,%d, size=%d,%d, dest=%d,%d",
+                        imgs[img_id].fname, from_x, from_y, to_x, to_y, width, height, dest_width, dest_argb.length / dest_width));
+            }
         }
     }
+
     /**
      * Combine non-transparent portions of given image onto destination
-     * @param img_id - image ID of raw image
-     * @param from_x - top-left X
-     * @param from_y - top-left Y
-     * @param to_x - dest topleft
-     * @param to_y - dest topleft
-     * @param width - width to copy
-     * @param height - height to copy
-     * @param dest_argb - destination tile buffer
+     *
+     * @param img_id     - image ID of raw image
+     * @param from_x     - top-left X
+     * @param from_y     - top-left Y
+     * @param to_x       - dest topleft
+     * @param to_y       - dest topleft
+     * @param width      - width to copy
+     * @param height     - height to copy
+     * @param dest_argb  - destination tile buffer
      * @param dest_width - width of destination tile buffer
      */
     private void combineSubimageFromImage(int img_id, int from_x, int from_y, int to_x, int to_y, int width, int height, int[] dest_argb, int dest_width) {
-        for(int h = 0; h < height; h++) {
-            for(int w = 0; w < width; w++) {
-                int src_argb = imgs[img_id].argb[(h+from_y)*imgs[img_id].width + (w+from_x)];
+        for (int h = 0; h < height; h++) {
+            for (int w = 0; w < width; w++) {
+                int src_argb = imgs[img_id].argb[(h + from_y) * imgs[img_id].width + (w + from_x)];
                 // Apply only solid pixels
-                if ( ((src_argb >> 24) & 255) == 255 ) {
+                if (((src_argb >> 24) & 255) == 255) {
                     dest_argb[dest_width * (h + to_y) + (w + to_x)] = src_argb;
                 }
             }
         }
     }
-    private enum HandlePos { CENTER, LEFT, RIGHT, NONE, LEFTFRONT, RIGHTFRONT };
+
+    private enum HandlePos {CENTER, LEFT, RIGHT, NONE, LEFTFRONT, RIGHTFRONT}
+
+    ;
+
     /**
      * Make chest side image (based on chest and largechest layouts)
-     * @param img_id - source image ID
-     * @param dest_idx - destination tile index
-     * @param src_x - starting X of source (scaled based on 64 high)
-     * @param width - width to copy (scaled based on 64 high)
-     * @param dest_x - destination X (scaled based on 64 high)
+     *
+     * @param img_id    - source image ID
+     * @param dest_idx  - destination tile index
+     * @param src_x     - starting X of source (scaled based on 64 high)
+     * @param width     - width to copy (scaled based on 64 high)
+     * @param dest_x    - destination X (scaled based on 64 high)
      * @param handlepos - 0=middle,1=leftedge,2=rightedge
      */
     private void makeChestSideImage(int img_id, int dest_idx, int src_x, int width, int dest_x, HandlePos handlepos) {
-        if(dest_idx <= 0) return;
+        if (dest_idx <= 0) return;
         int mult = imgs[img_id].height / 64; /* Nominal height for chest images is 64 */
         int[] tile = new int[16 * 16 * mult * mult];    /* Make image */
         /* Copy top part */
@@ -858,57 +866,54 @@ public class TexturePack {
         /* Copy bottom part */
         copySubimageFromImage(img_id, src_x * mult, 34 * mult, dest_x * mult, 7 * mult, width * mult, 9 * mult, tile, 16 * mult);
         /* Handle the handle image */
-        if(handlepos == HandlePos.CENTER) {    /* Middle */
+        if (handlepos == HandlePos.CENTER) {    /* Middle */
             copySubimageFromImage(img_id, 1 * mult, 1 * mult, 7 * mult, 4 * mult, 2 * mult, 4 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.LEFT) {   /* left edge */
+        } else if (handlepos == HandlePos.LEFT) {   /* left edge */
             copySubimageFromImage(img_id, 3 * mult, 1 * mult, 0 * mult, 4 * mult, 1 * mult, 4 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.LEFTFRONT) {   /* left edge - front of handle */
+        } else if (handlepos == HandlePos.LEFTFRONT) {   /* left edge - front of handle */
             copySubimageFromImage(img_id, 2 * mult, 1 * mult, 0 * mult, 4 * mult, 1 * mult, 4 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.RIGHT) {  /* Right */
+        } else if (handlepos == HandlePos.RIGHT) {  /* Right */
             copySubimageFromImage(img_id, 0 * mult, 1 * mult, 15 * mult, 4 * mult, 1 * mult, 4 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.RIGHTFRONT) {  /* Right - front of handle */
+        } else if (handlepos == HandlePos.RIGHTFRONT) {  /* Right - front of handle */
             copySubimageFromImage(img_id, 1 * mult, 1 * mult, 15 * mult, 4 * mult, 1 * mult, 4 * mult, tile, 16 * mult);
         }
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
-        scaleTerrainPNGSubImage(16*mult, native_scale, tile, new_argb);
+        int new_argb[] = new int[native_scale * native_scale];
+        scaleTerrainPNGSubImage(16 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
+
     /**
      * Make chest top/bottom image (based on chest and largechest layouts)
-     * @param img_id - source image ID
-     * @param dest_idx - destination tile index
-     * @param src_x - starting X of source (scaled based on 64 high)
-     * @param src_y - starting Y of source (scaled based on 64 high)
-     * @param width - width to copy (scaled based on 64 high)
-     * @param dest_x - destination X (scaled based on 64 high)
+     *
+     * @param img_id    - source image ID
+     * @param dest_idx  - destination tile index
+     * @param src_x     - starting X of source (scaled based on 64 high)
+     * @param src_y     - starting Y of source (scaled based on 64 high)
+     * @param width     - width to copy (scaled based on 64 high)
+     * @param dest_x    - destination X (scaled based on 64 high)
      * @param handlepos - 0=middle,1=left-edge (righttop),2=right-edge (lefttop)
      */
     private void makeChestTopBottomImage(int img_id, int dest_idx, int src_x, int src_y, int width, int dest_x, HandlePos handlepos) {
-        if(dest_idx <= 0) return;
-        
+        if (dest_idx <= 0) return;
+
         int mult = imgs[img_id].height / 64; /* Nominal height for chest images is 64 */
         int[] tile = new int[16 * 16 * mult * mult];    /* Make image */
         copySubimageFromImage(img_id, src_x * mult, src_y * mult, dest_x * mult, 1 * mult, width * mult, 14 * mult, tile, 16 * mult);
         /* Handle the handle image */
-        if(handlepos == HandlePos.CENTER) {    /* Middle */
+        if (handlepos == HandlePos.CENTER) {    /* Middle */
             copySubimageFromImage(img_id, 1 * mult, 0, 7 * mult, 15 * mult, 2 * mult, 1 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.LEFT) {   /* left edge */
+        } else if (handlepos == HandlePos.LEFT) {   /* left edge */
             copySubimageFromImage(img_id, 2 * mult, 0, 0 * mult, 15 * mult, 1 * mult, 1 * mult, tile, 16 * mult);
-        }
-        else if(handlepos == HandlePos.RIGHT) {  /* Right */
+        } else if (handlepos == HandlePos.RIGHT) {  /* Right */
             copySubimageFromImage(img_id, 1 * mult, 0, 15 * mult, 15 * mult, 1 * mult, 1 * mult, tile, 16 * mult);
         }
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
-        scaleTerrainPNGSubImage(16*mult, native_scale, tile, new_argb);
+        int new_argb[] = new int[native_scale * native_scale];
+        scaleTerrainPNGSubImage(16 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
+
     /**
      * Patch tiles based on image with chest-style layout
      */
@@ -920,6 +925,7 @@ public class TexturePack {
         makeChestTopBottomImage(img_id, tile_top, 14, 0, 14, 1, HandlePos.CENTER);
         makeChestTopBottomImage(img_id, tile_bottom, 28, 19, 14, 1, HandlePos.CENTER);
     }
+
     /**
      * Patch tiles based on image with large-chest-style layout
      */
@@ -938,25 +944,25 @@ public class TexturePack {
 
     /**
      * Make sign image (based on sign layouts)
-     * @param img_id - source image ID
+     *
+     * @param img_id   - source image ID
      * @param dest_idx - destination tile index
-     * @param src_x - starting X of source (scaled based on 32 high)
-     * @param src_y - starting Y of source (scaled based on 32 high)
-     * @param width - width to copy (scaled based on 32 high)
-     * @param height - height to copy (scaled based on 32 high)
+     * @param src_x    - starting X of source (scaled based on 32 high)
+     * @param src_y    - starting Y of source (scaled based on 32 high)
+     * @param width    - width to copy (scaled based on 32 high)
+     * @param height   - height to copy (scaled based on 32 high)
      */
     private void makeSignImage(int img_id, int dest_idx, int src_x, int src_y, int width, int height) {
         int mult = imgs[img_id].height / 32; /* Nominal height for sign images is 32 */
         int[] tile = new int[24 * 24 * mult * mult];    /* Make image (all are 24x24) */
-        copySubimageFromImage(img_id, src_x * mult, src_y * mult, 0, (24-height)*mult, width * mult, height * mult, tile, 24 * mult);
+        copySubimageFromImage(img_id, src_x * mult, src_y * mult, 0, (24 - height) * mult, width * mult, height * mult, tile, 24 * mult);
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
-        scaleTerrainPNGSubImage(24*mult, native_scale, tile, new_argb);
+        int new_argb[] = new int[native_scale * native_scale];
+        scaleTerrainPNGSubImage(24 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
 
-    private void patchSignImages(int img, int sign_front, int sign_back, int sign_top, int sign_bottom, int sign_left, int sign_right, int post_front, int post_back, int post_left, int post_right)
-    {
+    private void patchSignImages(int img, int sign_front, int sign_back, int sign_top, int sign_bottom, int sign_left, int sign_right, int post_front, int post_back, int post_left, int post_right) {
         /* Load images at lower left corner of each tile */
         makeSignImage(img, sign_front, 2, 2, 24, 12);
         makeSignImage(img, sign_back, 28, 2, 24, 12);
@@ -972,23 +978,23 @@ public class TexturePack {
 
     /**
      * Make face image (based on skin layouts)
-     * @param img_id - source image ID
+     *
+     * @param img_id   - source image ID
      * @param dest_idx - destination tile index
-     * @param src_x - starting X of source (scaled based on 32 high)
-     * @param src_y - starting Y of source (scaled based on 32 high)
+     * @param src_x    - starting X of source (scaled based on 32 high)
+     * @param src_y    - starting Y of source (scaled based on 32 high)
      */
     private void makeFaceImage(int img_id, int dest_idx, int src_x, int src_y) {
         int mult = imgs[img_id].width / 64; /* Nominal height for skin images is 32 */
         int[] tile = new int[8 * 8 * mult * mult];    /* Make image (all are 8x8) */
         copySubimageFromImage(img_id, src_x * mult, src_y * mult, 0, 0, 8 * mult, 8 * mult, tile, 8 * mult);
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
+        int new_argb[] = new int[native_scale * native_scale];
         scaleTerrainPNGSubImage(8 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
-    
-    private void patchSkinImages(int img, int face_front, int face_left, int face_right, int face_back, int face_top, int face_bottom)
-    {
+
+    private void patchSkinImages(int img, int face_front, int face_left, int face_right, int face_back, int face_top, int face_bottom) {
         makeFaceImage(img, face_front, 8, 8);
         makeFaceImage(img, face_left, 16, 8);
         makeFaceImage(img, face_right, 0, 8);
@@ -999,9 +1005,10 @@ public class TexturePack {
 
     /**
      * Make shulker side image from top and bottom images (based on shulker layouts)
-     * @param img_id - source image ID
+     *
+     * @param img_id   - source image ID
      * @param dest_idx - destination tile index
-     * @param src_x - starting X of source column (scaled based on 64 high)
+     * @param src_x    - starting X of source column (scaled based on 64 high)
      */
     private void makeShulkerSideImage(int img_id, int dest_idx, int src_x) {
         int mult = imgs[img_id].width / 64; /* Nominal height for shulker images is 64 */
@@ -1013,24 +1020,25 @@ public class TexturePack {
         /* Bottom half of the shulker */
         combineSubimageFromImage(img_id, src_x * mult, src_y_btm * mult, 0, 8 * mult, 16 * mult, 8 * mult, tile, 16 * mult);
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
+        int new_argb[] = new int[native_scale * native_scale];
         scaleTerrainPNGSubImage(16 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
 
     /**
      * Make shulker top/bottom image (based on shulker layouts)
-     * @param img_id - source image ID
+     *
+     * @param img_id   - source image ID
      * @param dest_idx - destination tile index
-     * @param src_x - starting X of source (scaled based on 64 high)
-     * @param src_y - starting Y of source (scaled based on 64 high)
+     * @param src_x    - starting X of source (scaled based on 64 high)
+     * @param src_y    - starting Y of source (scaled based on 64 high)
      */
     private void makeShulkerTopBottomImage(int img_id, int dest_idx, int src_x, int src_y) {
         int mult = imgs[img_id].width / 64; /* Nominal height for shulker images is 64 */
         int[] tile = new int[16 * 16 * mult * mult];    /* Make image (all are 16x16) */
         copySubimageFromImage(img_id, src_x * mult, src_y * mult, 0, 0, 16 * mult, 16 * mult, tile, 16 * mult);
         /* Put scaled result into tile buffer */
-        int new_argb[] = new int[native_scale*native_scale];
+        int new_argb[] = new int[native_scale * native_scale];
         scaleTerrainPNGSubImage(16 * mult, native_scale, tile, new_argb);
         setTileARGB(dest_idx, new_argb);
     }
@@ -1047,67 +1055,66 @@ public class TexturePack {
         makeShulkerTopBottomImage(img_id, tile_bottom, 32, 28);
     }
 
-    private void patchCustomImages(int img_id, int[] imgids, List<CustomTileRec> recs, int xcnt, int ycnt)
-    {
+    private void patchCustomImages(int img_id, int[] imgids, List<CustomTileRec> recs, int xcnt, int ycnt) {
         int mult = imgs[img_id].height / (ycnt * 16); /* Compute scale based on nominal tile count vertically (ycnt * 16) */
-        for(int i = 0; i < imgids.length; i++) {
-            if(imgids[i] <= 0) continue;
+        for (int i = 0; i < imgids.length; i++) {
+            if (imgids[i] <= 0) continue;
             CustomTileRec ctr = recs.get(i);
-            if(ctr == null) continue;
+            if (ctr == null) continue;
             int[] tile = new int[16 * 16 * mult * mult];    /* Make image */
-            copySubimageFromImage(img_id, ctr.srcx * mult, ctr.srcy * mult, ctr.targetx * mult, ctr.targety * mult, 
+            copySubimageFromImage(img_id, ctr.srcx * mult, ctr.srcy * mult, ctr.targetx * mult, ctr.targety * mult,
                     ctr.width * mult, ctr.height * mult, tile, 16 * mult);
             /* Put scaled result into tile buffer */
-            int new_argb[] = new int[native_scale*native_scale];
-            scaleTerrainPNGSubImage(16*mult, native_scale, tile, new_argb);
+            int new_argb[] = new int[native_scale * native_scale];
+            scaleTerrainPNGSubImage(16 * mult, native_scale, tile, new_argb);
             setTileARGB(imgids[i], new_argb);
         }
     }
 
-    private static List<CustomTileRec> bed_patches = 
-		Arrays.asList(new CustomTileRec[] {
-			    // TILEINDEX_BED_HEAD_TOP
-				new CustomTileRec(6, 6, 16, 16),
-			    // TILEINDEX_BED_HEAD_BOTTOM
-				new CustomTileRec(28, 6, 16, 16),
-			    // TILEINDEX_BED_HEAD_LEFT
-				new CustomTileRec(0, 6, 6, 16),
-			    // TILEINDEX_BED_HEAD_RIGHT
-				new CustomTileRec(22, 6, 6, 16),
-			    // TILEINDEX_BED_HEAD_END
-				new CustomTileRec(6, 0, 16, 6),
-			    // TILEINDEX_BED_FOOT_TOP
-				new CustomTileRec(6, 28, 16, 16),
-			    // TILEINDEX_BED_FOOT_BOTTOM
-				new CustomTileRec(28, 28, 16, 16),
-			    // TILEINDEX_BED_FOOT_LEFT
-				new CustomTileRec(0, 28, 6, 16),
-			    // TILEINDEX_BED_FOOT_RIGHT
-				new CustomTileRec(22, 28, 6, 16),
-			    // TILEINDEX_BED_FOOT_END
-				new CustomTileRec(22, 22, 16, 6),
-			    // TILEINDEX_BED_HEAD_LEFTLEG_1
-				new CustomTileRec(50, 0, 6, 6),
-			    // TILEINDEX_BED_HEAD_LEFTLEG_2 
-				new CustomTileRec(56, 0, 6, 6),
-			    // TILEINDEX_BED_HEAD_RIGHTLEG_1
-				new CustomTileRec(50, 6, 6, 6),
-			    // TILEINDEX_BED_HEAD_RIGHTLEG_2
-				new CustomTileRec(56, 6, 6, 6),
-			    // TILEINDEX_BED_FOOT_LEFTLEG_1
-				new CustomTileRec(50, 12, 6, 6),
-			    // TILEINDEX_BED_FOOT_LEFTLEG_2
-				new CustomTileRec(56, 12, 6, 6),
-			    // TILEINDEX_BED_FOOT_RIGHTLEG_1
-				new CustomTileRec(50, 18, 6, 6),
-			    // TILEINDEX_BED_FOOT_RIGHTLEG_2
-				new CustomTileRec(56, 18, 6, 6)
-		});
-    
+    private static List<CustomTileRec> bed_patches =
+            Arrays.asList(new CustomTileRec[]{
+                    // TILEINDEX_BED_HEAD_TOP
+                    new CustomTileRec(6, 6, 16, 16),
+                    // TILEINDEX_BED_HEAD_BOTTOM
+                    new CustomTileRec(28, 6, 16, 16),
+                    // TILEINDEX_BED_HEAD_LEFT
+                    new CustomTileRec(0, 6, 6, 16),
+                    // TILEINDEX_BED_HEAD_RIGHT
+                    new CustomTileRec(22, 6, 6, 16),
+                    // TILEINDEX_BED_HEAD_END
+                    new CustomTileRec(6, 0, 16, 6),
+                    // TILEINDEX_BED_FOOT_TOP
+                    new CustomTileRec(6, 28, 16, 16),
+                    // TILEINDEX_BED_FOOT_BOTTOM
+                    new CustomTileRec(28, 28, 16, 16),
+                    // TILEINDEX_BED_FOOT_LEFT
+                    new CustomTileRec(0, 28, 6, 16),
+                    // TILEINDEX_BED_FOOT_RIGHT
+                    new CustomTileRec(22, 28, 6, 16),
+                    // TILEINDEX_BED_FOOT_END
+                    new CustomTileRec(22, 22, 16, 6),
+                    // TILEINDEX_BED_HEAD_LEFTLEG_1
+                    new CustomTileRec(50, 0, 6, 6),
+                    // TILEINDEX_BED_HEAD_LEFTLEG_2
+                    new CustomTileRec(56, 0, 6, 6),
+                    // TILEINDEX_BED_HEAD_RIGHTLEG_1
+                    new CustomTileRec(50, 6, 6, 6),
+                    // TILEINDEX_BED_HEAD_RIGHTLEG_2
+                    new CustomTileRec(56, 6, 6, 6),
+                    // TILEINDEX_BED_FOOT_LEFTLEG_1
+                    new CustomTileRec(50, 12, 6, 6),
+                    // TILEINDEX_BED_FOOT_LEFTLEG_2
+                    new CustomTileRec(56, 12, 6, 6),
+                    // TILEINDEX_BED_FOOT_RIGHTLEG_1
+                    new CustomTileRec(50, 18, 6, 6),
+                    // TILEINDEX_BED_FOOT_RIGHTLEG_2
+                    new CustomTileRec(56, 18, 6, 6)
+            });
+
     private void patchBedImages(int img_id, int[] imgids) {
         patchCustomImages(img_id, imgids, bed_patches, 64, 64);
     }
-    
+
     /* Copy texture pack */
     private TexturePack(TexturePack tp) {
         this.tile_argb = Arrays.copyOf(tp.tile_argb, tp.tile_argb.length);
@@ -1116,7 +1123,7 @@ public class TexturePack {
         this.imgs = tp.imgs;
         this.blockColoring = tp.blockColoring;
     }
-    
+
     /* Load terrain */
     private void loadTerrain(boolean is_rp) throws IOException {
         int i, j;
@@ -1126,54 +1133,53 @@ public class TexturePack {
         if (is_rp) {   // If resource pack (1.6+)
             native_scale = 16;
             /* Loop through textures - find size of first one one */
-            for(i = 0; i < terrain_rp_map.length; i++) {
+            for (i = 0; i < terrain_rp_map.length; i++) {
                 String fn = getRPFileName(i);
                 if (fn == null) continue;
                 DynamicTileFile dtf = addonfilesbyname.get(fn);
                 if (dtf == null) continue;
-                LoadedImage li = imgs[dtf.idx+IMG_CNT];
-                if(li != null) {
+                LoadedImage li = imgs[dtf.idx + IMG_CNT];
+                if (li != null) {
                     native_scale = li.width;
                     break;
                 }
             }
-            blank = new int[native_scale*native_scale];
+            blank = new int[native_scale * native_scale];
             /* Now, load scaled images */
-            for(i = 0; i < terrain_rp_map.length; i++) {
+            for (i = 0; i < terrain_rp_map.length; i++) {
                 String fn = getRPFileName(i);
                 if (fn == null) continue;
                 DynamicTileFile dtf = addonfilesbyname.get(fn);
                 if (dtf == null) continue;
                 LoadedImage li = imgs[dtf.idx + IMG_CNT];
-                if(li != null) {
-                    int[] buf =  new int[native_scale * native_scale];
+                if (li != null) {
+                    int[] buf = new int[native_scale * native_scale];
                     scaleTerrainPNGSubImage(li.width, native_scale, li.argb, buf);
                     setTileARGB(i, buf);
                 }
             }
-        }
-        else {  /* Else, use v1.5 tile files */
+        } else {  /* Else, use v1.5 tile files */
             native_scale = 16;
             /* Loop through textures - find biggest one */
-            for(i = 0; i < terrain_map.length; i++) {
-                String fn = getBlockFileName(i);
-                if (fn == null) continue;
-                DynamicTileFile dtf = addonfilesbyname.get(fn);
-                if (dtf == null) continue;
-                LoadedImage li = imgs[dtf.idx+IMG_CNT];
-                if(li != null) {
-                    if(native_scale < li.width) native_scale = li.width;
-                }
-            }
-            blank = new int[native_scale*native_scale];
-            /* Now, load scaled images */
-            for(i = 0; i < terrain_map.length; i++) {
+            for (i = 0; i < terrain_map.length; i++) {
                 String fn = getBlockFileName(i);
                 if (fn == null) continue;
                 DynamicTileFile dtf = addonfilesbyname.get(fn);
                 if (dtf == null) continue;
                 LoadedImage li = imgs[dtf.idx + IMG_CNT];
-                if(li != null) {
+                if (li != null) {
+                    if (native_scale < li.width) native_scale = li.width;
+                }
+            }
+            blank = new int[native_scale * native_scale];
+            /* Now, load scaled images */
+            for (i = 0; i < terrain_map.length; i++) {
+                String fn = getBlockFileName(i);
+                if (fn == null) continue;
+                DynamicTileFile dtf = addonfilesbyname.get(fn);
+                if (dtf == null) continue;
+                LoadedImage li = imgs[dtf.idx + IMG_CNT];
+                if (li != null) {
                     int[] buf = new int[native_scale * native_scale];
                     scaleTerrainPNGSubImage(li.width, native_scale, li.argb, buf);
                     setTileARGB(i, buf);
@@ -1186,15 +1192,15 @@ public class TexturePack {
         int[] red_nsew = getTileARGB(TILEINDEX_REDSTONE_NSEW);
         int[] red_ew_tone = getTileARGB(TILEINDEX_REDSTONE_EW_TONE);
         int[] red_ew = getTileARGB(TILEINDEX_REDSTONE_EW);
-        
-        for(i = 0; i < native_scale*native_scale; i++) {
-            if(red_nsew_tone[i] != 0) {
+
+        for (i = 0; i < native_scale * native_scale; i++) {
+            if (red_nsew_tone[i] != 0) {
                 /* Overlay NSEW redstone texture with toned wire color */
                 tc.setARGB(red_nsew_tone[i]);
                 tc.blendColor(0xFFC00000);  /* Blend in red */
                 red_nsew[i] = tc.getARGB();
             }
-            if(red_ew_tone[i] != 0) {
+            if (red_ew_tone[i] != 0) {
                 /* Overlay NSEW redstone texture with toned wire color */
                 tc.setARGB(red_ew_tone[i]);
                 tc.blendColor(0xFFC00000);  /* Blend in red */
@@ -1202,69 +1208,69 @@ public class TexturePack {
             }
         }
         /* Build extended piston side texture - take top 1/4 of piston side, use to make piston extension */
-        int[] buf = new int[native_scale*native_scale];
+        int[] buf = new int[native_scale * native_scale];
         setTileARGB(TILEINDEX_PISTONEXTSIDE, buf);
         int[] piston_side = getTileARGB(TILEINDEX_PISTONSIDE);
         System.arraycopy(piston_side, 0, buf, 0, native_scale * native_scale / 4);
-        for(i = 0; i < native_scale/4; i++) {
-            for(j = 0; j < (3*native_scale/4); j++) {
-                buf[native_scale*(native_scale/4 + j) + (3*native_scale/8 + i)] = piston_side[native_scale*i + j];
+        for (i = 0; i < native_scale / 4; i++) {
+            for (j = 0; j < (3 * native_scale / 4); j++) {
+                buf[native_scale * (native_scale / 4 + j) + (3 * native_scale / 8 + i)] = piston_side[native_scale * i + j];
             }
         }
         /* Build piston side while extended (cut off top 1/4, replace with rotated top for extension */
-        buf = new int[native_scale*native_scale];
-        setTileARGB(TILEINDEX_PISTONSIDE_EXT, buf); 
-        System.arraycopy(piston_side, native_scale*native_scale/4, buf, native_scale*native_scale/4,
-             3 * native_scale * native_scale / 4);  /* Copy bottom 3/4 */
-        for(i = 0; i < native_scale/4; i++) {
-            for(j = 3*native_scale/4; j < native_scale; j++) {
-                buf[native_scale*(j - 3*native_scale/4) + (3*native_scale/8 + i)] =
-                    piston_side[native_scale*i + j];
+        buf = new int[native_scale * native_scale];
+        setTileARGB(TILEINDEX_PISTONSIDE_EXT, buf);
+        System.arraycopy(piston_side, native_scale * native_scale / 4, buf, native_scale * native_scale / 4,
+                3 * native_scale * native_scale / 4);  /* Copy bottom 3/4 */
+        for (i = 0; i < native_scale / 4; i++) {
+            for (j = 3 * native_scale / 4; j < native_scale; j++) {
+                buf[native_scale * (j - 3 * native_scale / 4) + (3 * native_scale / 8 + i)] =
+                        piston_side[native_scale * i + j];
             }
         }
         /* Build glass pane top in NSEW config (we use model to clip it) */
-        buf = new int[native_scale*native_scale];
-        setTileARGB(TILEINDEX_PANETOP_X, buf); 
+        buf = new int[native_scale * native_scale];
+        setTileARGB(TILEINDEX_PANETOP_X, buf);
         int[] glasspanetop = getTileARGB(TILEINDEX_GLASSPANETOP);
-        System.arraycopy(glasspanetop, 0, buf, 0, native_scale*native_scale);
-        for(i = native_scale*7/16; i < native_scale*9/16; i++) {
-            for(j = 0; j < native_scale; j++) {
-                buf[native_scale*i + j] = buf[native_scale*j + i];
+        System.arraycopy(glasspanetop, 0, buf, 0, native_scale * native_scale);
+        for (i = native_scale * 7 / 16; i < native_scale * 9 / 16; i++) {
+            for (j = 0; j < native_scale; j++) {
+                buf[native_scale * i + j] = buf[native_scale * j + i];
             }
         }
         /* Build air frame with eye overlay */
-        buf = new int[native_scale*native_scale];
+        buf = new int[native_scale * native_scale];
         setTileARGB(TILEINDEX_AIRFRAME_EYE, buf);
         int[] airframe = getTileARGB(TILEINDEX_AIRFRAME);
         int[] eyeofender = getTileARGB(TILEINDEX_EYEOFENDER);
-        System.arraycopy(airframe, 0, buf, 0, native_scale*native_scale);
-        for(i = native_scale/4; i < native_scale*3/4; i++) {
-            for(j = native_scale/4; j < native_scale*3/4; j++) {
-                buf[native_scale*i + j] = eyeofender[native_scale*i + j];
+        System.arraycopy(airframe, 0, buf, 0, native_scale * native_scale);
+        for (i = native_scale / 4; i < native_scale * 3 / 4; i++) {
+            for (j = native_scale / 4; j < native_scale * 3 / 4; j++) {
+                buf[native_scale * i + j] = eyeofender[native_scale * i + j];
             }
         }
         /* Build white tile */
-        buf = new int[native_scale*native_scale];
+        buf = new int[native_scale * native_scale];
         setTileARGB(TILEINDEX_WHITE, buf);
         Arrays.fill(buf, 0xFFFFFFFF);
     }
-    
+
     /* Load image into image array */
     private void loadImage(InputStream is, int idx, String fname, String modid) throws IOException {
         BufferedImage img = null;
         /* Load image */
-        if(is != null) {
+        if (is != null) {
             ImageIO.setUseCache(false);
             try {
-            	img = ImageIO.read(is);
+                img = ImageIO.read(is);
             } catch (IOException iox) {
             }
-            if (img == null) { 
-            	Log.warning(String.format("Error loading image %s from module %s", fname, modid));
-        	}
+            if (img == null) {
+                Log.warning(String.format("Error loading image %s from module %s", fname, modid));
+            }
         }
-        if(idx >= imgs.length) {
-            LoadedImage[] newimgs = new LoadedImage[idx+1];
+        if (idx >= imgs.length) {
+            LoadedImage[] newimgs = new LoadedImage[idx + 1];
             System.arraycopy(imgs, 0, newimgs, 0, imgs.length);
             imgs = newimgs;
         }
@@ -1273,21 +1279,19 @@ public class TexturePack {
             imgs[idx].width = img.getWidth();
             imgs[idx].height = img.getHeight();
             imgs[idx].argb = new int[imgs[idx].width * imgs[idx].height];
-            if (img.getType() == BufferedImage.TYPE_BYTE_GRAY) {	// We don't want alpha correction, apparently
-            	float[] buffer = new float[imgs[idx].width * imgs[idx].height];
-    			img.getData().getPixels(0, 0, imgs[idx].width, imgs[idx].height, buffer);
-            	for (int i = 0; i < imgs[idx].argb.length; i++) {
-            		int v = (int) buffer[i];
-            		imgs[idx].argb[i] = 0xFF000000 | (v << 16) | (v << 8) | v;
-            	}
-            }
-            else {
-            	img.getRGB(0, 0, imgs[idx].width, imgs[idx].height, imgs[idx].argb, 0, imgs[idx].width);
+            if (img.getType() == BufferedImage.TYPE_BYTE_GRAY) {    // We don't want alpha correction, apparently
+                float[] buffer = new float[imgs[idx].width * imgs[idx].height];
+                img.getData().getPixels(0, 0, imgs[idx].width, imgs[idx].height, buffer);
+                for (int i = 0; i < imgs[idx].argb.length; i++) {
+                    int v = (int) buffer[i];
+                    imgs[idx].argb[i] = 0xFF000000 | (v << 16) | (v << 8) | v;
+                }
+            } else {
+                img.getRGB(0, 0, imgs[idx].width, imgs[idx].height, imgs[idx].argb, 0, imgs[idx].width);
             }
             img.flush();
             imgs[idx].isLoaded = true;
-        }
-        else {  // Pad with blank image
+        } else {  // Pad with blank image
             imgs[idx].width = 16;
             imgs[idx].height = 16;
             imgs[idx].argb = new int[imgs[idx].width * imgs[idx].height];
@@ -1295,31 +1299,31 @@ public class TexturePack {
         imgs[idx].fname = fname;
         imgs[idx].modid = modid;
     }
-        
+
 
     /* Process dynamic texture files, and patch into terrain_argb */
     private void processDynamicImage(int idx, TileFileFormat format) {
         DynamicTileFile dtf = addonfiles.get(idx);  /* Get tile file definition */
-        LoadedImage li = imgs[idx+IMG_CNT];
+        LoadedImage li = imgs[idx + IMG_CNT];
         if (li == null) return;
-        
-        switch(format) {
+
+        switch (format) {
             case GRID:  /* If grid format tile file */
                 int dim = li.width / dtf.tilecnt_x; /* Dimension of each tile */
                 int dim2 = li.height / dtf.tilecnt_y;
                 if (dim2 < dim) dim = dim2;
-                int old_argb[] = new int[dim*dim];
-                for(int x = 0; x < dtf.tilecnt_x; x++) {
-                    for(int y = 0; y < dtf.tilecnt_y; y++) {
-                        int tileidx = dtf.tile_to_dyntile[y*dtf.tilecnt_x + x];
+                int old_argb[] = new int[dim * dim];
+                for (int x = 0; x < dtf.tilecnt_x; x++) {
+                    for (int y = 0; y < dtf.tilecnt_y; y++) {
+                        int tileidx = dtf.tile_to_dyntile[y * dtf.tilecnt_x + x];
                         if (tileidx < 0) continue;
-                        if((tileidx >= terrain_map.length) || (terrain_map[tileidx] == null)) {    /* dynamic ID? */
+                        if ((tileidx >= terrain_map.length) || (terrain_map[tileidx] == null)) {    /* dynamic ID? */
                             /* Copy source tile */
-                            for(int j = 0; j < dim; j++) {
-                                System.arraycopy(li.argb, (y*dim+j)*li.width + (x*dim), old_argb, j*dim, dim); 
+                            for (int j = 0; j < dim; j++) {
+                                System.arraycopy(li.argb, (y * dim + j) * li.width + (x * dim), old_argb, j * dim, dim);
                             }
                             /* Rescale to match rest of terrain PNG */
-                            int new_argb[] = new int[native_scale*native_scale];
+                            int new_argb[] = new int[native_scale * native_scale];
                             scaleTerrainPNGSubImage(dim, native_scale, old_argb, new_argb);
                             setTileARGB(tileidx, new_argb);
                         }
@@ -1327,25 +1331,25 @@ public class TexturePack {
                 }
                 break;
             case CHEST:
-                patchChestImages(idx+IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_CHEST_TOP], dtf.tile_to_dyntile[TILEINDEX_CHEST_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_CHEST_FRONT], dtf.tile_to_dyntile[TILEINDEX_CHEST_BACK], dtf.tile_to_dyntile[TILEINDEX_CHEST_LEFT], dtf.tile_to_dyntile[TILEINDEX_CHEST_RIGHT]);
+                patchChestImages(idx + IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_CHEST_TOP], dtf.tile_to_dyntile[TILEINDEX_CHEST_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_CHEST_FRONT], dtf.tile_to_dyntile[TILEINDEX_CHEST_BACK], dtf.tile_to_dyntile[TILEINDEX_CHEST_LEFT], dtf.tile_to_dyntile[TILEINDEX_CHEST_RIGHT]);
                 break;
             case BIGCHEST:
-                patchLargeChestImages(idx+IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_TOPRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_TOPLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BOTTOMRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BOTTOMLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_RIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_LEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_FRONTRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_FRONTLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BACKRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BACKLEFT]);
+                patchLargeChestImages(idx + IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_TOPRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_TOPLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BOTTOMRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BOTTOMLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_RIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_LEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_FRONTRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_FRONTLEFT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BACKRIGHT], dtf.tile_to_dyntile[TILEINDEX_BIGCHEST_BACKLEFT]);
                 break;
             case SIGN:
-                patchSignImages(idx+IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SIGN_FRONT], dtf.tile_to_dyntile[TILEINDEX_SIGN_BACK], dtf.tile_to_dyntile[TILEINDEX_SIGN_TOP], dtf.tile_to_dyntile[TILEINDEX_SIGN_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_SIGN_LEFTSIDE], dtf.tile_to_dyntile[TILEINDEX_SIGN_RIGHTSIDE], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTFRONT], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTBACK], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTLEFT], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTRIGHT]);
+                patchSignImages(idx + IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SIGN_FRONT], dtf.tile_to_dyntile[TILEINDEX_SIGN_BACK], dtf.tile_to_dyntile[TILEINDEX_SIGN_TOP], dtf.tile_to_dyntile[TILEINDEX_SIGN_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_SIGN_LEFTSIDE], dtf.tile_to_dyntile[TILEINDEX_SIGN_RIGHTSIDE], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTFRONT], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTBACK], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTLEFT], dtf.tile_to_dyntile[TILEINDEX_SIGN_POSTRIGHT]);
                 break;
             case SKIN:
-                patchSkinImages(idx+IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEFRONT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACELEFT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACERIGHT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEBACK], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACETOP], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEBOTTOM]);
+                patchSkinImages(idx + IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEFRONT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACELEFT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACERIGHT], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEBACK], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACETOP], dtf.tile_to_dyntile[TILEINDEX_SKIN_FACEBOTTOM]);
                 break;
             case SHULKER:
-                patchShulkerImages(idx+IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SHULKER_TOP], dtf.tile_to_dyntile[TILEINDEX_SHULKER_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_SHULKER_FRONT], dtf.tile_to_dyntile[TILEINDEX_SHULKER_BACK], dtf.tile_to_dyntile[TILEINDEX_SHULKER_LEFT], dtf.tile_to_dyntile[TILEINDEX_SHULKER_RIGHT]);
+                patchShulkerImages(idx + IMG_CNT, dtf.tile_to_dyntile[TILEINDEX_SHULKER_TOP], dtf.tile_to_dyntile[TILEINDEX_SHULKER_BOTTOM], dtf.tile_to_dyntile[TILEINDEX_SHULKER_FRONT], dtf.tile_to_dyntile[TILEINDEX_SHULKER_BACK], dtf.tile_to_dyntile[TILEINDEX_SHULKER_LEFT], dtf.tile_to_dyntile[TILEINDEX_SHULKER_RIGHT]);
                 break;
             case CUSTOM:
-                patchCustomImages(idx+IMG_CNT, dtf.tile_to_dyntile, dtf.cust, dtf.tilecnt_x, dtf.tilecnt_y);
+                patchCustomImages(idx + IMG_CNT, dtf.tile_to_dyntile, dtf.cust, dtf.tilecnt_x, dtf.tilecnt_y);
                 break;
             case BED:
-                patchBedImages(idx+IMG_CNT, dtf.tile_to_dyntile);
+                patchBedImages(idx + IMG_CNT, dtf.tile_to_dyntile);
                 break;
             case TILESET:
                 break;
@@ -1363,31 +1367,31 @@ public class TexturePack {
             }
         }
     }
+
     /* Load biome shading image into image array */
     private void loadBiomeShadingImage(InputStream is, int idx, String fname, String modid) throws IOException {
         loadImage(is, idx, fname, modid); /* Get image */
         LoadedImage li = imgs[idx];
         if (li.width != 256) {  /* Required to be 256 x 256 */
-            int[] scaled = new int[256*256];
+            int[] scaled = new int[256 * 256];
             scaleTerrainPNGSubImage(li.width, 256, li.argb, scaled);
             li.argb = scaled;
             li.width = 256;
             li.height = 256;
         }
         /* Get trivial color for biome-shading image */
-        int clr = li.argb[li.height*li.width*3/4 + li.width/2];
+        int clr = li.argb[li.height * li.width * 3 / 4 + li.width / 2];
         boolean same = true;
-        for(int j = 0; same && (j < li.height); j++) {
-            for(int i = 0; same && (i <= j); i++) {
-                if(li.argb[li.width*j+i] != clr)
+        for (int j = 0; same && (j < li.height); j++) {
+            for (int i = 0; same && (i <= j); i++) {
+                if (li.argb[li.width * j + i] != clr)
                     same = false;
             }
         }
         /* All the same - no biome lookup needed */
-        if(same) {
+        if (same) {
             li.trivial_color = clr;
-        }
-        else {  /* Else, calculate color average for lower left quadrant */
+        } else {  /* Else, calculate color average for lower left quadrant */
             int[] clr_scale = new int[16];
             scaleTerrainPNGSubImage(li.width, 4, li.argb, clr_scale);
             li.trivial_color = clr_scale[9];
@@ -1397,14 +1401,14 @@ public class TexturePack {
             this.blockColoring.scrubValues(idx);
         }
     }
-    
+
     /* Patch image into texture table */
     private void patchTextureWithImage(int image_idx, int block_idx) {
         /* Now, patch in to block table */
-        int new_argb[] = new int[native_scale*native_scale];
+        int new_argb[] = new int[native_scale * native_scale];
         scaleTerrainPNGSubImage(imgs[image_idx].width, native_scale, imgs[image_idx].argb, new_argb);
         setTileARGB(block_idx, new_argb);
-        
+
     }
 
     /* Get texture pack directory */
@@ -1414,18 +1418,19 @@ public class TexturePack {
 
     /**
      * Resample terrain pack for given scale, and return copy using that scale
+     *
      * @param scale - scale
      * @return resampled texture pack
      */
     public TexturePack resampleTexturePack(int scale) {
-        synchronized(scaledlock) {
-            if(scaled_textures == null) scaled_textures = new HashMap<Integer, TexturePack>();
+        synchronized (scaledlock) {
+            if (scaled_textures == null) scaled_textures = new HashMap<Integer, TexturePack>();
             TexturePack stp = scaled_textures.get(scale);
-            if(stp != null)
+            if (stp != null)
                 return stp;
             stp = new TexturePack(this);    /* Make copy */
             /* Scale terrain.png, if needed */
-            if(stp.native_scale != scale) {
+            if (stp.native_scale != scale) {
                 stp.native_scale = scale;
                 scaleTerrainPNG(stp);
             }
@@ -1434,32 +1439,35 @@ public class TexturePack {
             return stp;
         }
     }
+
     /**
      * Scale our terrain_argb into the terrain_argb of the provided destination, matching the scale of that destination
+     *
      * @param tp
      */
     private void scaleTerrainPNG(TexturePack tp) {
         tp.tile_argb = new int[tile_argb.length][];
         /* Terrain.png is 16x16 array of images : process one at a time */
-        for(int idx = 0; idx < tile_argb.length; idx++) {
-            tp.tile_argb[idx] = new int[tp.native_scale*tp.native_scale];
-            scaleTerrainPNGSubImage(native_scale, tp.native_scale, getTileARGB(idx),  tp.tile_argb[idx]);
+        for (int idx = 0; idx < tile_argb.length; idx++) {
+            tp.tile_argb[idx] = new int[tp.native_scale * tp.native_scale];
+            scaleTerrainPNGSubImage(native_scale, tp.native_scale, getTileARGB(idx), tp.tile_argb[idx]);
         }
         /* Special case - some textures are used as masks - need pure alpha (00 or FF) */
         makeAlphaPure(tp.tile_argb[TILEINDEX_GRASSMASK]); /* Grass side mask */
     }
+
     public static void scaleTerrainPNGSubImage(int srcscale, int destscale, int[] src_argb, int[] dest_argb) {
         int nativeres = srcscale;
         int res = destscale;
         Color c = new Color();
         /* Same size, so just copy */
-        if(res == nativeres) {
+        if (res == nativeres) {
             System.arraycopy(src_argb, 0, dest_argb, 0, dest_argb.length);
         }
         /* If we're scaling larger source pixels into smaller pixels, each destination pixel
          * receives input from 1 or 2 source pixels on each axis
          */
-        else if(res > nativeres) {
+        else if (res > nativeres) {
             int weights[] = new int[res];
             int offsets[] = new int[res];
             /* LCM of resolutions is used as length of line (res * nativeres)
@@ -1467,36 +1475,35 @@ public class TexturePack {
              * Each scaled block overlaps 1 or 2 native blocks: starting with native block 'offsets[]' with
              * 'weights[]' of its (res) width in the first, and the rest in the second
              */
-            for(int v = 0, idx = 0; v < res*nativeres; v += nativeres, idx++) {
-                offsets[idx] = (v/res); /* Get index of the first native block we draw from */
-                if((v+nativeres-1)/res == offsets[idx]) {   /* If scaled block ends in same native block */
+            for (int v = 0, idx = 0; v < res * nativeres; v += nativeres, idx++) {
+                offsets[idx] = (v / res); /* Get index of the first native block we draw from */
+                if ((v + nativeres - 1) / res == offsets[idx]) {   /* If scaled block ends in same native block */
                     weights[idx] = nativeres;
-                }
-                else {  /* Else, see how much is in first one */
-                    weights[idx] = (offsets[idx]*res + res) - v;
+                } else {  /* Else, see how much is in first one */
+                    weights[idx] = (offsets[idx] * res + res) - v;
                 }
             }
             /* Now, use weights and indices to fill in scaled map */
-            for(int y = 0; y < res; y++) {
+            for (int y = 0; y < res; y++) {
                 int ind_y = offsets[y];
                 int wgt_y = weights[y];
-                for(int x = 0; x < res; x++) {
+                for (int x = 0; x < res; x++) {
                     int ind_x = offsets[x];
                     int wgt_x = weights[x];
                     double accum_red = 0;
                     double accum_green = 0;
                     double accum_blue = 0;
                     double accum_alpha = 0;
-                    for(int xx = 0; xx < 2; xx++) {
-                        int wx = (xx==0)?wgt_x:(nativeres-wgt_x);
-                        if(wx == 0) continue;
-                        for(int yy = 0; yy < 2; yy++) {
-                            int wy = (yy==0)?wgt_y:(nativeres-wgt_y);
-                            if(wy == 0) continue;
+                    for (int xx = 0; xx < 2; xx++) {
+                        int wx = (xx == 0) ? wgt_x : (nativeres - wgt_x);
+                        if (wx == 0) continue;
+                        for (int yy = 0; yy < 2; yy++) {
+                            int wy = (yy == 0) ? wgt_y : (nativeres - wgt_y);
+                            if (wy == 0) continue;
                             /* Accumulate */
-                            c.setARGB(src_argb[(ind_y+yy)*nativeres + ind_x + xx]);
+                            c.setARGB(src_argb[(ind_y + yy) * nativeres + ind_x + xx]);
                             int w = wx * wy;
-                            double a = (double)w * (double)c.getAlpha();
+                            double a = (double) w * (double) c.getAlpha();
                             accum_red += c.getRed() * a;
                             accum_green += c.getGreen() * a;
                             accum_blue += c.getBlue() * a;
@@ -1504,15 +1511,14 @@ public class TexturePack {
                         }
                     }
                     double newalpha = accum_alpha;
-                    if(newalpha == 0.0) newalpha = 1.0;
+                    if (newalpha == 0.0) newalpha = 1.0;
                     /* Generate weighted compnents into color */
-                    c.setRGBA((int)(accum_red / newalpha), (int)(accum_green / newalpha), 
-                              (int)(accum_blue / newalpha), (int)(accum_alpha / (nativeres*nativeres)));
-                    dest_argb[(y*res) + x] = c.getARGB();
+                    c.setRGBA((int) (accum_red / newalpha), (int) (accum_green / newalpha),
+                            (int) (accum_blue / newalpha), (int) (accum_alpha / (nativeres * nativeres)));
+                    dest_argb[(y * res) + x] = c.getARGB();
                 }
             }
-        }
-        else {  /* nativeres > res */
+        } else {  /* nativeres > res */
             int weights[] = new int[nativeres];
             int offsets[] = new int[nativeres];
             /* LCM of resolutions is used as length of line (res * nativeres)
@@ -1520,79 +1526,80 @@ public class TexturePack {
              * Each native block overlaps 1 or 2 scaled blocks: starting with scaled block 'offsets[]' with
              * 'weights[]' of its (res) width in the first, and the rest in the second
              */
-            for(int v = 0, idx = 0; v < res*nativeres; v += res, idx++) {
-                offsets[idx] = (v/nativeres); /* Get index of the first scaled block we draw to */
-                if((v+res-1)/nativeres == offsets[idx]) {   /* If native block ends in same scaled block */
+            for (int v = 0, idx = 0; v < res * nativeres; v += res, idx++) {
+                offsets[idx] = (v / nativeres); /* Get index of the first scaled block we draw to */
+                if ((v + res - 1) / nativeres == offsets[idx]) {   /* If native block ends in same scaled block */
                     weights[idx] = res;
-                }
-                else {  /* Else, see how much is in first one */
-                    weights[idx] = (offsets[idx]*nativeres + nativeres) - v;
+                } else {  /* Else, see how much is in first one */
+                    weights[idx] = (offsets[idx] * nativeres + nativeres) - v;
                 }
             }
-            double accum_red[] = new double[res*res];
-            double accum_green[] = new double[res*res];
-            double accum_blue[] = new double[res*res];
-            double accum_alpha[] = new double[res*res];
-            
+            double accum_red[] = new double[res * res];
+            double accum_green[] = new double[res * res];
+            double accum_blue[] = new double[res * res];
+            double accum_alpha[] = new double[res * res];
+
             /* Now, use weights and indices to fill in scaled map */
-            for(int y = 0; y < nativeres; y++) {
+            for (int y = 0; y < nativeres; y++) {
                 int ind_y = offsets[y];
                 int wgt_y = weights[y];
-                for(int x = 0; x < nativeres; x++) {
+                for (int x = 0; x < nativeres; x++) {
                     int ind_x = offsets[x];
                     int wgt_x = weights[x];
-                    c.setARGB(src_argb[(y*nativeres) + x]);
-                    for(int xx = 0; xx < 2; xx++) {
-                        int wx = (xx==0)?wgt_x:(res-wgt_x);
-                        if(wx == 0) continue;
-                        for(int yy = 0; yy < 2; yy++) {
-                            int wy = (yy==0)?wgt_y:(res-wgt_y);
-                            if(wy == 0) continue;
+                    c.setARGB(src_argb[(y * nativeres) + x]);
+                    for (int xx = 0; xx < 2; xx++) {
+                        int wx = (xx == 0) ? wgt_x : (res - wgt_x);
+                        if (wx == 0) continue;
+                        for (int yy = 0; yy < 2; yy++) {
+                            int wy = (yy == 0) ? wgt_y : (res - wgt_y);
+                            if (wy == 0) continue;
                             double w = wx * wy;
                             double a = w * c.getAlpha();
-                            accum_red[(ind_y+yy)*res + (ind_x+xx)] += c.getRed() * a;
-                            accum_green[(ind_y+yy)*res + (ind_x+xx)] += c.getGreen() * a;
-                            accum_blue[(ind_y+yy)*res + (ind_x+xx)] += c.getBlue() * a;
-                            accum_alpha[(ind_y+yy)*res + (ind_x+xx)] += a;
+                            accum_red[(ind_y + yy) * res + (ind_x + xx)] += c.getRed() * a;
+                            accum_green[(ind_y + yy) * res + (ind_x + xx)] += c.getGreen() * a;
+                            accum_blue[(ind_y + yy) * res + (ind_x + xx)] += c.getBlue() * a;
+                            accum_alpha[(ind_y + yy) * res + (ind_x + xx)] += a;
                         }
                     }
                 }
             }
             /* Produce normalized scaled values */
-            for(int y = 0; y < res; y++) {
-                for(int x = 0; x < res; x++) {
-                    int off = (y*res) + x;
+            for (int y = 0; y < res; y++) {
+                for (int x = 0; x < res; x++) {
+                    int off = (y * res) + x;
                     double aa = accum_alpha[off];
-                    if(aa == 0.0) aa = 1.0;
-                    c.setRGBA((int)(accum_red[off]/aa), (int)(accum_green[off]/aa),
-                          (int)(accum_blue[off]/aa), (int)(accum_alpha[off] / (nativeres*nativeres)));
-                    dest_argb[y*res + x] = c.getARGB();
+                    if (aa == 0.0) aa = 1.0;
+                    c.setRGBA((int) (accum_red[off] / aa), (int) (accum_green[off] / aa),
+                            (int) (accum_blue[off] / aa), (int) (accum_alpha[off] / (nativeres * nativeres)));
+                    dest_argb[y * res + x] = c.getARGB();
                 }
             }
         }
     }
+
     private static void addFiles(List<String> tsfiles, List<String> txfiles, File dir, String path) {
         File[] listfiles = dir.listFiles();
-        if(listfiles == null) return;
-        for(File f : listfiles) {
+        if (listfiles == null) return;
+        for (File f : listfiles) {
             String fn = f.getName();
-            if(fn.equals(".") || (fn.equals(".."))) continue;
-            if(f.isFile()) {
-                if(fn.endsWith("-texture.txt")) {
+            if (fn.equals(".") || (fn.equals(".."))) continue;
+            if (f.isFile()) {
+                if (fn.endsWith("-texture.txt")) {
                     txfiles.add(path + fn);
                 }
-                if(fn.endsWith("-tilesets.txt")) {
+                if (fn.endsWith("-tilesets.txt")) {
                     tsfiles.add(path + fn);
                 }
-            }
-            else if(f.isDirectory()) {
+            } else if (f.isDirectory()) {
                 addFiles(tsfiles, txfiles, f, path + f.getName() + "/");
             }
         }
     }
+
     /**
      * Load texture pack mappings
-     * @param core - core object
+     *
+     * @param core   - core object
      * @param config - configuration for texture mapping
      */
     public static void loadTextureMapping(DynmapCore core, ConfigurationNode config) {
@@ -1607,11 +1614,16 @@ public class TexturePack {
         InputStream in = null;
         while (!done) {
             in = TexturePack.class.getResourceAsStream("/texture_" + i + ".txt");
-            if(in != null) {
+            if (in != null) {
                 loadTextureFile(in, "texture_" + i + ".txt", config, core, "core");
-                if(in != null) { try { in.close(); } catch (IOException x) {} in = null; }
-            }
-            else {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (IOException x) {
+                    }
+                    in = null;
+                }
+            } else {
                 done = true;
             }
             i++;
@@ -1635,11 +1647,17 @@ public class TexturePack {
                 } catch (IOException e) {
                 } finally {
                     if (in != null) {
-                        try { in.close(); } catch (IOException e) { }
+                        try {
+                            in.close();
+                        } catch (IOException e) {
+                        }
                         in = null;
                     }
                     if (zf != null) {
-                        try { zf.close(); } catch (IOException e) { }
+                        try {
+                            zf.close();
+                        } catch (IOException e) {
+                        }
                         zf = null;
                     }
                 }
@@ -1650,30 +1668,42 @@ public class TexturePack {
         ArrayList<String> tsfiles = new ArrayList<String>();
         ArrayList<String> txfiles = new ArrayList<String>();
         addFiles(tsfiles, txfiles, renderdir, "");
-        for(String fname : tsfiles) {
+        for (String fname : tsfiles) {
             File custom = new File(renderdir, fname);
-            if(custom.canRead()) {
+            if (custom.canRead()) {
                 try {
                     in = new FileInputStream(custom);
                     loadTileSetsFile(in, custom.getPath(), config, core, HDBlockModels.getModIDFromFileName(fname));
                 } catch (IOException iox) {
                     Log.severe("Error loading " + custom.getPath() + " - " + iox);
                 } finally {
-                    if(in != null) { try { in.close(); } catch (IOException x) {} in = null; }
+                    if (in != null) {
+                        try {
+                            in.close();
+                        } catch (IOException x) {
+                        }
+                        in = null;
+                    }
                 }
             }
         }
         // Load external texture files (before internals, to allow them to override them)
-        for(String fname : txfiles) {
+        for (String fname : txfiles) {
             File custom = new File(renderdir, fname);
-            if(custom.canRead()) {
+            if (custom.canRead()) {
                 try {
                     in = new FileInputStream(custom);
                     loadTextureFile(in, custom.getPath(), config, core, HDBlockModels.getModIDFromFileName(fname));
                 } catch (IOException iox) {
                     Log.severe("Error loading " + custom.getPath() + " - " + iox);
                 } finally {
-                    if(in != null) { try { in.close(); } catch (IOException x) {} in = null; }
+                    if (in != null) {
+                        try {
+                            in.close();
+                        } catch (IOException x) {
+                        }
+                        in = null;
+                    }
                 }
             }
         }
@@ -1691,18 +1721,28 @@ public class TexturePack {
                 in = zf.getInputStream(ze);
                 if (in != null) {
                     loadTextureFile(in, n, config, core, HDBlockModels.getModIDFromFileName(n));
-                    try { in.close(); } catch (IOException x) { in = null; }
+                    try {
+                        in.close();
+                    } catch (IOException x) {
+                        in = null;
+                    }
                 }
             }
         } catch (IOException iox) {
             Log.severe("Error processing texture files");
         } finally {
             if (in != null) {
-                try { in.close(); } catch (IOException iox) {}
+                try {
+                    in.close();
+                } catch (IOException iox) {
+                }
                 in = null;
             }
             if (zf != null) {
-                try { zf.close(); } catch (IOException iox) {}
+                try {
+                    zf.close();
+                } catch (IOException iox) {
+                }
                 zf = null;
             }
         }
@@ -1717,7 +1757,7 @@ public class TexturePack {
                 Log.verboseinfo("Block " + blk + " - no texture mapping");
             }
             int cnt = HDBlockModels.getNeededTextureCount(blk);
-            if(cnt > tm.faces.length){
+            if (cnt > tm.faces.length) {
                 Log.severe("Block " + blk + " - not enough textures for faces (" + cnt + " > " + tm.faces.length + ")");
                 tm.resizeFaces(cnt);
             }
@@ -1750,113 +1790,105 @@ public class TexturePack {
 
     private static String getBlockName(String modid, String val) throws NumberFormatException {
         char c = val.charAt(0);
-        if(Character.isLetter(c) || (c == '%') || (c == '&')) {
+        if (Character.isLetter(c) || (c == '%') || (c == '&')) {
             if ((c == '%') || (c == '&')) {
                 val = val.substring(1);
             }
             int off = val.indexOf('+');
             if (off > 0) {
-                val = val.substring(0,  off);
+                val = val.substring(0, off);
             }
             if (val.indexOf(':') < 0) {
                 val = modid + ":" + val;
             }
             return val;
-        }
-        else {
+        } else {
             throw new NumberFormatException("invalid ID - " + val);
         }
     }
-    
-    private static Integer getIntValue(Map<String,Integer> vars, String val) throws NumberFormatException {
+
+    private static Integer getIntValue(Map<String, Integer> vars, String val) throws NumberFormatException {
         char c = val.charAt(0);
-        if(Character.isLetter(c) || (c == '%') || (c == '&')) {
+        if (Character.isLetter(c) || (c == '%') || (c == '&')) {
             int off = val.indexOf('+');
             int offset = 0;
             if (off > 0) {
-                offset = Integer.valueOf(val.substring(off+1));
-                val = val.substring(0,  off);
+                offset = Integer.valueOf(val.substring(off + 1));
+                val = val.substring(0, off);
             }
             Integer v = vars.get(val);
-            if(v == null) {
+            if (v == null) {
                 if ((c == '%') || (c == '&')) {
                     vars.put(val, 0);
                     v = 0;
-                }
-                else {
+                } else {
                     throw new NumberFormatException("invalid ID - " + val);
                 }
             }
-            if((offset != 0) && (v.intValue() > 0))
+            if ((offset != 0) && (v.intValue() > 0))
                 v = v.intValue() + offset;
             return v;
-        }
-        else {
+        } else {
             return Integer.valueOf(val);
         }
     }
 
-    private static int parseTextureIndex(HashMap<String,Integer> filetoidx, int srctxtid, String val) throws NumberFormatException {
+    private static int parseTextureIndex(HashMap<String, Integer> filetoidx, int srctxtid, String val) throws NumberFormatException {
         int off = val.indexOf(':');
         int txtid = -1;
-        if(off > 0) {
-            String txt = val.substring(off+1);
-            if(filetoidx.containsKey(txt)) {
+        if (off > 0) {
+            String txt = val.substring(off + 1);
+            if (filetoidx.containsKey(txt)) {
                 srctxtid = filetoidx.get(txt);
-            }
-            else {
+            } else {
                 throw new NumberFormatException("Unknown attribute: " + txt);
             }
             txtid = Integer.valueOf(val.substring(0, off));
-        }
-        else {
+        } else {
             txtid = Integer.valueOf(val);
         }
         /* Shift function code from x1000 to x1000000 for internal processing */
         int funcid = (txtid / COLORMOD_MULT_FILE);
         txtid = txtid - (COLORMOD_MULT_FILE * funcid);
         /* If we have source texture, need to map values to dynamic ids */
-        if((srctxtid >= 0) && (txtid >= 0)) {
+        if ((srctxtid >= 0) && (txtid >= 0)) {
             /* Map to assigned ID in global tile table: preserve modifier */
-            txtid =findOrAddDynamicTile(srctxtid, txtid); 
+            txtid = findOrAddDynamicTile(srctxtid, txtid);
         }
-        if(srctxtid == TXTID_INVALID) {
+        if (srctxtid == TXTID_INVALID) {
             throw new NumberFormatException("Invalid texture ID: no default terrain.png: " + val);
         }
         return txtid + (COLORMOD_MULT_INTERNAL * funcid);
     }
+
     /**
      * Load texture pack mappings from tilesets.txt file
      */
     private static void loadTileSetsFile(InputStream txtfile, String txtname, ConfigurationNode config, DynmapCore core, String blockset) {
         LineNumberReader rdr = null;
         DynamicTileFile tfile = null;
-        
+
         try {
             String line;
             rdr = new LineNumberReader(new BufferedReader(new InputStreamReader(txtfile)));
-            while((line = rdr.readLine()) != null) {
-                if(line.startsWith("#")) {
-                }
-                else if(line.startsWith("tileset:")) { /* Start of tileset definition */
-                    line = line.substring(line.indexOf(':')+1);
+            while ((line = rdr.readLine()) != null) {
+                if (line.startsWith("#")) {
+                } else if (line.startsWith("tileset:")) { /* Start of tileset definition */
+                    line = line.substring(line.indexOf(':') + 1);
                     int xdim = 16, ydim = 16;
                     String fname = null;
                     String setdir = null;
                     String[] toks = line.split(",");
-                    for(String tok : toks) {
+                    for (String tok : toks) {
                         String[] v = tok.split("=");
-                        if(v.length < 2) continue;
-                        if(v[0].equals("xcount")) {
+                        if (v.length < 2) continue;
+                        if (v[0].equals("xcount")) {
                             xdim = Integer.parseInt(v[1]);
-                        }
-                        else if(v[0].equals("ycount")) {
+                        } else if (v[0].equals("ycount")) {
                             ydim = Integer.parseInt(v[1]);
-                        }
-                        else if(v[0].equals("setdir")) {
+                        } else if (v[0].equals("setdir")) {
                             setdir = v[1];
-                        }
-                        else if(v[0].equals("filename")) {
+                        } else if (v[0].equals("filename")) {
                             fname = v[1];
                         }
                     }
@@ -1870,29 +1902,25 @@ public class TexturePack {
                         }
                         /* Initialize tile name map and set directory path */
                         tfile.tilenames = new String[tfile.tile_to_dyntile.length];
-                    }
-                    else {
+                    } else {
                         Log.severe("Error defining tile set at " + rdr.getLineNumber() + " of " + txtname);
                         return;
                     }
-                }
-                else if(Character.isDigit(line.charAt(0))) {    /* Starts with digit?  tile mapping */
+                } else if (Character.isDigit(line.charAt(0))) {    /* Starts with digit?  tile mapping */
                     int split = line.indexOf('-');  /* Find first dash */
-                    if(split < 0) continue;
+                    if (split < 0) continue;
                     String id = line.substring(0, split).trim();
-                    String name = line.substring(split+1).trim();
+                    String name = line.substring(split + 1).trim();
                     String[] coord = id.split(",");
                     int idx = -1;
-                    if(coord.length == 2) { /* If x,y */
+                    if (coord.length == 2) { /* If x,y */
                         idx = (Integer.parseInt(coord[1]) * tfile.tilecnt_x) + Integer.parseInt(coord[0]);
-                    }
-                    else if(coord.length == 1) { /* Just index */
+                    } else if (coord.length == 1) { /* Just index */
                         idx = Integer.parseInt(coord[0]);
                     }
-                    if((idx >= 0) && (idx < tfile.tilenames.length)) {
+                    if ((idx >= 0) && (idx < tfile.tilenames.length)) {
                         tfile.tilenames[idx] = name;
-                    }
-                    else {
+                    } else {
                         Log.severe("Bad tile index - line " + rdr.getLineNumber() + " of " + txtname);
                     }
                 }
@@ -1902,7 +1930,7 @@ public class TexturePack {
         } catch (NumberFormatException nfx) {
             Log.severe("Format error - line " + rdr.getLineNumber() + " of " + txtname + ": " + nfx.getMessage());
         } finally {
-            if(rdr != null) {
+            if (rdr != null) {
                 try {
                     rdr.close();
                     rdr = null;
@@ -1911,16 +1939,18 @@ public class TexturePack {
             }
         }
     }
+
     private static final int TXTID_INVALID = -2;
     private static final int TXTID_TERRAINPNG = -1;
+
     /**
      * Load texture pack mappings from texture.txt file
      */
     private static void loadTextureFile(InputStream txtfile, String txtname, ConfigurationNode config, DynmapCore core, String blockset) {
         LineNumberReader rdr = null;
         int cnt = 0;
-        HashMap<String,Integer> filetoidx = new HashMap<String,Integer>();
-        HashMap<String,Integer> varvals = new HashMap<String,Integer>();
+        HashMap<String, Integer> filetoidx = new HashMap<String, Integer>();
+        HashMap<String, Integer> varvals = new HashMap<String, Integer>();
         final String mcver = core.getDynmapPluginPlatformVersion();
         boolean mod_cfg_needed = false;
         boolean mod_cfg_loaded = false;
@@ -1934,7 +1964,7 @@ public class TexturePack {
         try {
             String line;
             rdr = new LineNumberReader(new BufferedReader(new InputStreamReader(txtfile)));
-            while((line = rdr.readLine()) != null) {
+            while ((line = rdr.readLine()) != null) {
                 boolean skip = false;
                 int lineNum = rdr.getLineNumber();
                 if ((line.length() > 0) && (line.charAt(0) == '[')) {    // If version constrained like
@@ -1952,10 +1982,10 @@ public class TexturePack {
                     if (!HDBlockModels.checkVersionRange(tver, vertst)) {
                         skip = true;
                     }
-                    line = line.substring(end+1);
+                    line = line.substring(end + 1);
                 }
                 if (line.startsWith("#") || line.startsWith(";")) {
-                	skip = true;
+                    skip = true;
                 }
                 // If we're skipping due to version restriction
                 if (skip) continue;
@@ -1963,18 +1993,18 @@ public class TexturePack {
                 int typeend = line.indexOf(':');
                 String typeid = "";
                 if (typeend >= 0) {
-                	typeid = line.substring(0, typeend);
-                	line = line.substring(typeend+1).trim();
+                    typeid = line.substring(0, typeend);
+                    line = line.substring(typeend + 1).trim();
                 }
                 if (typeid.equals("block")) {
-                	// Parse block states
-                	bsp.processLine(modname, line, lineNum, varvals);
+                    // Parse block states
+                    bsp.processLine(modname, line, lineNum, varvals);
 
                     int srctxtid = TXTID_TERRAINPNG;
                     if (!terrain_ok)
                         srctxtid = TXTID_INVALID;  // Mark as not usable
-                    int faces[] = new int[] { TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK };
-                    int txtidx[] = new int[] { -1, -1, -1, -1, -1, -1 };
+                    int faces[] = new int[]{TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK, TILEINDEX_BLANK};
+                    int txtidx[] = new int[]{-1, -1, -1, -1, -1, -1};
                     byte layers[] = null;
                     BlockTransparency trans = BlockTransparency.OPAQUE;
                     int colorMult = 0;
@@ -1982,11 +2012,11 @@ public class TexturePack {
                     boolean stdrot = false; // Legacy top/bottom rotation
                     CustomColorMultiplier custColorMult = null;
                     String[] args = line.split(",");
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        else if(av[0].equals("txtid")) {
-                            if(filetoidx.containsKey(av[1]))
+                        if (av.length < 2) continue;
+                        else if (av[0].equals("txtid")) {
+                            if (filetoidx.containsKey(av[1]))
                                 srctxtid = filetoidx.get(av[1]);
                             else
                                 Log.severe("Format error - line " + lineNum + " of " + txtname + ": bad texture " + av[1]);
@@ -1995,191 +2025,170 @@ public class TexturePack {
                     bsprslt = bsp.getMatchingStates();
 
                     if (bsprslt.size() > 0) {
-                        for(String a : args) {
+                        for (String a : args) {
                             String[] av = a.split("=");
-                            if(av.length < 2) continue;
-                            if(av[0].equals("top") || av[0].equals("y-") || av[0].equals("face1")) {
+                            if (av.length < 2) continue;
+                            if (av[0].equals("top") || av[0].equals("y-") || av[0].equals("face1")) {
                                 faces[BlockStep.Y_MINUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("bottom") || av[0].equals("y+") || av[0].equals("face0")) {
+                            } else if (av[0].equals("bottom") || av[0].equals("y+") || av[0].equals("face0")) {
                                 faces[BlockStep.Y_PLUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("north") || av[0].equals("x+") || av[0].equals("face4")) {
+                            } else if (av[0].equals("north") || av[0].equals("x+") || av[0].equals("face4")) {
                                 faces[BlockStep.X_PLUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("south") || av[0].equals("x-") || av[0].equals("face5")) {
+                            } else if (av[0].equals("south") || av[0].equals("x-") || av[0].equals("face5")) {
                                 faces[BlockStep.X_MINUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("west") || av[0].equals("z-") || av[0].equals("face3")) {
+                            } else if (av[0].equals("west") || av[0].equals("z-") || av[0].equals("face3")) {
                                 faces[BlockStep.Z_MINUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("east") || av[0].equals("z+") || av[0].equals("face2")) {
+                            } else if (av[0].equals("east") || av[0].equals("z+") || av[0].equals("face2")) {
                                 faces[BlockStep.Z_PLUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].startsWith("face")) {
+                            } else if (av[0].startsWith("face")) {
                                 int fid0, fid1;
                                 String idrange = av[0].substring(4);
                                 String[] ids = idrange.split("-");
-                                if(ids.length > 1) {
+                                if (ids.length > 1) {
                                     fid0 = Integer.parseInt(ids[0]);
                                     fid1 = Integer.parseInt(ids[1]);
-                                }
-                                else {
+                                } else {
                                     fid0 = fid1 = Integer.parseInt(ids[0]);
                                 }
-                                if((fid0 < 0) || (fid1 < fid0)) {
+                                if ((fid0 < 0) || (fid1 < fid0)) {
                                     Log.severe("Texture mapping has invalid face index - " + av[1] + " - line " + lineNum + " of " + txtname);
                                     return;
                                 }
-                                int faceToOrd[] = { BlockStep.Y_PLUS.ordinal(), BlockStep.Y_MINUS.ordinal(),
+                                int faceToOrd[] = {BlockStep.Y_PLUS.ordinal(), BlockStep.Y_MINUS.ordinal(),
                                         BlockStep.Z_PLUS.ordinal(), BlockStep.Z_MINUS.ordinal(),
                                         BlockStep.X_PLUS.ordinal(), BlockStep.X_MINUS.ordinal()
                                 };
                                 int txtid = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                                for(int i = fid0; (i <= fid1) && (i < 6); i++) {
+                                for (int i = fid0; (i <= fid1) && (i < 6); i++) {
                                     faces[faceToOrd[i]] = txtid;
                                 }
-                            }
-                            else if(av[0].equals("allfaces")) {
+                            } else if (av[0].equals("allfaces")) {
                                 int id = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                                for(int i = 0; i < 6; i++) {
+                                for (int i = 0; i < 6; i++) {
                                     faces[i] = id;
                                 }
-                            }
-                            else if(av[0].equals("allsides")) {
+                            } else if (av[0].equals("allsides")) {
                                 int id = parseTextureIndex(filetoidx, srctxtid, av[1]);
                                 faces[BlockStep.X_PLUS.ordinal()] = id;
                                 faces[BlockStep.X_MINUS.ordinal()] = id;
                                 faces[BlockStep.Z_PLUS.ordinal()] = id;
                                 faces[BlockStep.Z_MINUS.ordinal()] = id;
-                            }
-                            else if(av[0].equals("topbottom")) {
-                                faces[BlockStep.Y_MINUS.ordinal()] = 
+                            } else if (av[0].equals("topbottom")) {
+                                faces[BlockStep.Y_MINUS.ordinal()] =
                                         faces[BlockStep.Y_PLUS.ordinal()] = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                            }
-                            else if(av[0].equals("blockcolor")) {
-                                if(filetoidx.containsKey(av[1]))
+                            } else if (av[0].equals("blockcolor")) {
+                                if (filetoidx.containsKey(av[1]))
                                     blockColorIdx = filetoidx.get(av[1]);
                                 else
                                     Log.severe("Format error - line " + lineNum + " of " + txtname + ": bad texture " + av[1]);
-                            }
-                            else if(av[0].startsWith("patch")) {
+                            } else if (av[0].startsWith("patch")) {
                                 int patchid0, patchid1;
                                 String idrange = av[0].substring(5);
                                 String[] ids = idrange.split("-");
-                                if(ids.length > 1) {
+                                if (ids.length > 1) {
                                     patchid0 = Integer.parseInt(ids[0]);
                                     patchid1 = Integer.parseInt(ids[1]);
-                                }
-                                else {
+                                } else {
                                     patchid0 = patchid1 = Integer.parseInt(ids[0]);
                                 }
-                                if((patchid0 < 0) || (patchid1 < patchid0)) {
+                                if ((patchid0 < 0) || (patchid1 < patchid0)) {
                                     Log.severe("Texture mapping has invalid patch index - " + av[1] + " - line " + lineNum + " of " + txtname);
                                     return;
                                 }
-                                if(faces.length <= patchid1) {
-                                    int[] newfaces = new int[patchid1+1];
+                                if (faces.length <= patchid1) {
+                                    int[] newfaces = new int[patchid1 + 1];
                                     Arrays.fill(newfaces, TILEINDEX_BLANK);
                                     System.arraycopy(faces, 0, newfaces, 0, faces.length);
                                     faces = newfaces;
-                                    int[] newtxtidx = new int[patchid1+1];
+                                    int[] newtxtidx = new int[patchid1 + 1];
                                     Arrays.fill(newtxtidx, -1);
                                     System.arraycopy(txtidx, 0, newtxtidx, 0, txtidx.length);
                                     txtidx = newtxtidx;
                                 }
                                 int txtid = parseTextureIndex(filetoidx, srctxtid, av[1]);
-                                for(int i = patchid0; i <= patchid1; i++) {
+                                for (int i = patchid0; i <= patchid1; i++) {
                                     faces[i] = txtid;
                                 }
-                            }
-                            else if(av[0].equals("transparency")) {
+                            } else if (av[0].equals("transparency")) {
                                 trans = BlockTransparency.valueOf(av[1]);
-                                if(trans == null) {
+                                if (trans == null) {
                                     trans = BlockTransparency.OPAQUE;
                                     Log.severe("Texture mapping has invalid transparency setting - " + av[1] + " - line " + lineNum + " of " + txtname);
                                 }
                                 /* For leaves, base on leaf transparency setting */
-                                if(trans == BlockTransparency.LEAVES) {
-                                    if(core.getLeafTransparency())
+                                if (trans == BlockTransparency.LEAVES) {
+                                    if (core.getLeafTransparency())
                                         trans = BlockTransparency.TRANSPARENT;
                                     else
                                         trans = BlockTransparency.OPAQUE;
                                 }
-                            }
-                            else if(av[0].equals("colorMult")) {
-                                colorMult = (int)Long.parseLong(av[1], 16);
-                            }
-                            else if(av[0].equals("custColorMult")) {
+                            } else if (av[0].equals("colorMult")) {
+                                colorMult = (int) Long.parseLong(av[1], 16);
+                            } else if (av[0].equals("custColorMult")) {
                                 try {
                                     Class<?> cls = Class.forName(av[1]);
-                                    custColorMult = (CustomColorMultiplier)cls.getDeclaredConstructor().newInstance();
+                                    custColorMult = (CustomColorMultiplier) cls.getDeclaredConstructor().newInstance();
                                 } catch (Exception x) {
                                     Log.severe("Error loading custom color multiplier - " + av[1] + ": " + x.getMessage());
                                 }
-                            }
-                            else if(av[0].equals("stdrot")) {
+                            } else if (av[0].equals("stdrot")) {
                                 stdrot = av[1].equals("true");
                             }
                         }
-                        for(String a : args) {
+                        for (String a : args) {
                             String[] av = a.split("=");
-                            if(av.length < 2) continue;
+                            if (av.length < 2) continue;
                             if (av[0].startsWith("layer")) {
-                                if(layers == null) {
+                                if (layers == null) {
                                     layers = new byte[faces.length];
-                                    Arrays.fill(layers, (byte)-1);
+                                    Arrays.fill(layers, (byte) -1);
                                 }
                                 String v[] = av[0].substring(5).split("-");
                                 int id1, id2;
                                 id1 = id2 = Integer.parseInt(v[0]);
-                                if(v.length > 1) {
+                                if (v.length > 1) {
                                     id2 = Integer.parseInt(v[1]);
                                 }
-                                byte val = (byte)Integer.parseInt(av[1]);
-                                for(; id1 <= id2; id1++) {
+                                byte val = (byte) Integer.parseInt(av[1]);
+                                for (; id1 <= id2; id1++) {
                                     layers[id1] = val;
                                 }
                             }
                         }
                         /* If we have everything, build block */
                         if (bsprslt.size() > 0) {
-                            Integer colorIndex = (blockColorIdx >= 0)?(blockColorIdx + IMG_CNT):null;
+                            Integer colorIndex = (blockColorIdx >= 0) ? (blockColorIdx + IMG_CNT) : null;
                             HDBlockStateTextureMap map = new HDBlockStateTextureMap(faces, layers, colorMult, custColorMult, blockset, stdrot, colorIndex, trans);
                             map.addToTable(bsprslt);
                             cnt++;
-                        }
-                        else {
+                        } else {
                             Log.severe("Texture mapping missing required parameters = line " + lineNum + " of " + txtname);
                         }
                     }
-                }
-                else if (typeid.equals("copyblock")) {
-                	// Parse block states
-                	bsp.processLine(modname, line, lineNum, varvals);
+                } else if (typeid.equals("copyblock")) {
+                    // Parse block states
+                    bsp.processLine(modname, line, lineNum, varvals);
 
                     String[] args = line.split(",");
                     String srcname = null;
                     int srcmeta = 0;
                     BlockTransparency trans = null;
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("srcid")) {
+                        if (av.length < 2) continue;
+                        if (av[0].equals("srcid")) {
                             srcname = getBlockName(modname, av[1]);
-                        }
-                        else if(av[0].equals("srcmeta")) {
-                            srcmeta = getIntValue(varvals,av[1]);
-                        }
-                        else if(av[0].equals("transparency")) {
+                        } else if (av[0].equals("srcmeta")) {
+                            srcmeta = getIntValue(varvals, av[1]);
+                        } else if (av[0].equals("transparency")) {
                             trans = BlockTransparency.valueOf(av[1]);
-                            if(trans == null) {
+                            if (trans == null) {
                                 trans = BlockTransparency.OPAQUE;
                                 Log.severe("Texture mapping has invalid transparency setting - " + av[1] + " - line " + lineNum + " of " + txtname);
                             }
                             /* For leaves, base on leaf transparency setting */
-                            if(trans == BlockTransparency.LEAVES) {
-                                if(core.getLeafTransparency())
+                            if (trans == BlockTransparency.LEAVES) {
+                                if (core.getLeafTransparency())
                                     trans = BlockTransparency.TRANSPARENT;
                                 else
                                     trans = BlockTransparency.OPAQUE;
@@ -2188,98 +2197,89 @@ public class TexturePack {
                     }
                     /* If we have everything, build block */
                     bsprslt = bsp.getMatchingStates();
-                    
+
                     if ((bsprslt.size() > 0) && (srcname != null)) {
                         DynmapBlockState srcblk = DynmapBlockState.getStateByNameAndIndex(srcname, srcmeta);
                         HDBlockStateTextureMap map = null;
                         if (srcblk != null) map = HDBlockStateTextureMap.getByBlockState(srcblk);
                         if (map == null) {
                             Log.severe("Copy of texture mapping failed = line " + lineNum + " of " + txtname);
-                        }
-                        else {
+                        } else {
                             for (DynmapBlockState bblk : bsprslt.keySet()) {
-                            	BitSet stateids = bsprslt.get(bblk);
-                                for (int stateid = stateids.nextSetBit(0); stateid >= 0; stateid = stateids.nextSetBit(stateid+1)) {
+                                BitSet stateids = bsprslt.get(bblk);
+                                for (int stateid = stateids.nextSetBit(0); stateid >= 0; stateid = stateids.nextSetBit(stateid + 1)) {
                                     DynmapBlockState dblk2 = bblk.getState(stateid);
                                     HDBlockStateTextureMap.copyToStateIndex(dblk2, map, trans);
                                 }
                             }
                             cnt++;
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Texture mapping copy missing required parameters = line " + lineNum + " of " + txtname);
                     }
-                }
-                else if (typeid.equals("addtotexturemap")) {
+                } else if (typeid.equals("addtotexturemap")) {
                     int srctxtid = -1;
                     String mapid = null;
                     String[] args = line.split(",");
                     for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        else if(av[0].equals("txtid")) {
-                            if(filetoidx.containsKey(av[1]))
+                        if (av.length < 2) continue;
+                        else if (av[0].equals("txtid")) {
+                            if (filetoidx.containsKey(av[1]))
                                 srctxtid = filetoidx.get(av[1]);
                             else
                                 Log.severe("Format error - line " + lineNum + " of " + txtname);
-                        }
-                        else if(av[0].equals("mapid")) {
+                        } else if (av[0].equals("mapid")) {
                             mapid = av[1];
                         }
                     }
-                    if(mapid != null) {
-                        for(String a : args) {
+                    if (mapid != null) {
+                        for (String a : args) {
                             String[] av = a.split("=");
-                            if(av.length < 2) continue;
-                            if(av[0].startsWith("key:")) {
+                            if (av.length < 2) continue;
+                            if (av[0].startsWith("key:")) {
                                 Integer key = getIntValue(varvals, av[0].substring(4));
                                 if ((key != null) && (key > 0)) {
                                     addTextureByKey(mapid, key, parseTextureIndex(filetoidx, srctxtid, av[1]));
                                 }
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Missing mapid  - line " + lineNum + " of " + txtname);
                     }
-                }
-                else if (typeid.equals("texturemap")) {
-                	// Parse block states
-                	bsp.processLine(modname, line, lineNum, varvals);
+                } else if (typeid.equals("texturemap")) {
+                    // Parse block states
+                    bsp.processLine(modname, line, lineNum, varvals);
 
                     String mapid = null;
                     BlockTransparency trans = BlockTransparency.OPAQUE;
                     int colorMult = 0;
                     CustomColorMultiplier custColorMult = null;
                     String[] args = line.split(",");
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("mapid")) {
+                        if (av.length < 2) continue;
+                        if (av[0].equals("mapid")) {
                             mapid = av[1];
-                        }
-                        else if(av[0].equals("transparency")) {
+                        } else if (av[0].equals("transparency")) {
                             trans = BlockTransparency.valueOf(av[1]);
-                            if(trans == null) {
+                            if (trans == null) {
                                 trans = BlockTransparency.OPAQUE;
                                 Log.severe("Texture mapping has invalid transparency setting - " + av[1] + " - line " + lineNum + " of " + txtname);
                             }
                             /* For leaves, base on leaf transparency setting */
-                            if(trans == BlockTransparency.LEAVES) {
-                                if(core.getLeafTransparency())
+                            if (trans == BlockTransparency.LEAVES) {
+                                if (core.getLeafTransparency())
                                     trans = BlockTransparency.TRANSPARENT;
                                 else
                                     trans = BlockTransparency.OPAQUE;
                             }
-                        }
-                        else if(av[0].equals("colorMult")) {
+                        } else if (av[0].equals("colorMult")) {
                             colorMult = Integer.valueOf(av[1], 16);
-                        }
-                        else if(av[0].equals("custColorMult")) {
+                        } else if (av[0].equals("custColorMult")) {
                             try {
                                 Class<?> cls = Class.forName(av[1]);
-                                custColorMult = (CustomColorMultiplier)cls.getDeclaredConstructor().newInstance();
+                                custColorMult = (CustomColorMultiplier) cls.getDeclaredConstructor().newInstance();
                             } catch (Exception x) {
                                 Log.severe("Error loading custom color multiplier - " + av[1] + ": " + x.getMessage());
                             }
@@ -2289,12 +2289,10 @@ public class TexturePack {
                     bsprslt = bsp.getMatchingStates();
                     if ((bsprslt.size() > 0) && (mapid != null)) {
                         addTextureIndex(mapid, bsprslt, trans, colorMult, custColorMult, blockset);
-                    }
-                    else {
+                    } else {
                         Log.severe("Texture map missing required parameters = line " + lineNum + " of " + txtname);
                     }
-                }
-                else if (typeid.equals("texturefile") || typeid.equals("texture")) {
+                } else if (typeid.equals("texturefile") || typeid.equals("texture")) {
                     boolean istxt = typeid.equals("texture");
                     String[] args = line.split(",");
                     int xdim = 16, ydim = 16;
@@ -2302,78 +2300,70 @@ public class TexturePack {
                     String id = null;
                     TileFileFormat fmt = TileFileFormat.GRID;
                     MaterialType mt = null;
-                    if(istxt) {
+                    if (istxt) {
                         xdim = ydim = 1;
                         fmt = TileFileFormat.GRID;
                     }
-                    for(String arg : args) {
+                    for (String arg : args) {
                         String[] aval = arg.split("=");
-                        if(aval.length < 2)
+                        if (aval.length < 2)
                             continue;
-                        if(aval[0].equals("id")) {
+                        if (aval[0].equals("id")) {
                             id = aval[1];
                             if (fname == null) {
                                 if (texturepath != null) {
                                     fname = texturepath + id + ".png";
-                                }
-                                else if (texturemod != null) {
+                                } else if (texturemod != null) {
                                     fname = "mods/" + texturemod + "/textures/blocks/" + id + ".png";
                                 }
                             }
-                        }
-                        else if(aval[0].equals("filename"))
+                        } else if (aval[0].equals("filename"))
                             fname = aval[1];
-                        else if(aval[0].equals("xcount"))
+                        else if (aval[0].equals("xcount"))
                             xdim = Integer.parseInt(aval[1]);
-                        else if(aval[0].equals("ycount"))
+                        else if (aval[0].equals("ycount"))
                             ydim = Integer.parseInt(aval[1]);
-                        else if(aval[0].equals("format")) {
+                        else if (aval[0].equals("format")) {
                             fmt = TileFileFormat.valueOf(aval[1].toUpperCase());
-                            if(fmt == null) {
+                            if (fmt == null) {
                                 Log.severe("Invalid format type " + aval[1] + " - line " + lineNum + " of " + txtname);
                                 return;
                             }
-                        }
-                        else if(aval[0].equals("material")) {
+                        } else if (aval[0].equals("material")) {
                             mt = MaterialType.valueOf(aval[1]);
                             if (mt == null) {
                                 Log.warning("Bad custom material type: " + aval[1]);
                             }
                         }
                     }
-                    if((fname != null) && (id != null)) {
+                    if ((fname != null) && (id != null)) {
                         /* Register the file */
                         int fid = findOrAddDynamicTileFile(fname, modname, xdim, ydim, fmt, args);
                         filetoidx.put(id, fid); /* Save lookup */
                         if (mt != null) {
                             addonfiles.get(fid).material = mt;
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Format error - line " + lineNum + " of " + txtname);
                         return;
                     }
-                }
-                else if (typeid.equals("enabled")) {  /* Test if texture file is enabled */
-                    if(line.startsWith("true")) {   /* We're enabled? */
+                } else if (typeid.equals("enabled")) {  /* Test if texture file is enabled */
+                    if (line.startsWith("true")) {   /* We're enabled? */
                         /* Nothing to do - keep processing */
-                    }
-                    else if(line.startsWith("false")) { /* Disabled */
+                    } else if (line.startsWith("false")) { /* Disabled */
                         return; /* Quit */
                     }
                     /* If setting is not defined or false, quit */
-                    else if(config.getBoolean(line, false) == false) {
+                    else if (config.getBoolean(line, false) == false) {
                         return;
-                    }
-                    else {
+                    } else {
                         Log.info(line + " textures enabled");
                     }
-                }
-                else if (typeid.equals("var")) {  /* Test if variable declaration */
+                } else if (typeid.equals("var")) {  /* Test if variable declaration */
                     String args[] = line.split(",");
-                    for(int i = 0; i < args.length; i++) {
+                    for (int i = 0; i < args.length; i++) {
                         String[] v = args[i].split("=");
-                        if(v.length < 2) {
+                        if (v.length < 2) {
                             Log.severe("Format error - line " + lineNum + " of " + txtname);
                             return;
                         }
@@ -2386,23 +2376,21 @@ public class TexturePack {
                             return;
                         }
                     }
-                }
-                else if (typeid.equals("cfgfile")) { /* If config file */
+                } else if (typeid.equals("cfgfile")) { /* If config file */
                     if (!mod_cfg_loaded) {
                         mod_cfg_needed = true;
                     }
                     File cfgfile = new File(line);
                     ForgeConfigFile cfg = new ForgeConfigFile(cfgfile);
-                    if(cfg.load()) {
+                    if (cfg.load()) {
                         cfg.addBlockIDs(varvals);
                         mod_cfg_needed = false;
                         mod_cfg_loaded = true;
                     }
-                }
-                else if (typeid.equals("modname")) {
+                } else if (typeid.equals("modname")) {
                     String[] names = line.split(",");
                     boolean found = false;
-                    for(String n : names) {
+                    for (String n : names) {
                         String[] ntok = n.split("[\\[\\]]");
                         String rng = null;
                         if (ntok.length > 1) {
@@ -2415,30 +2403,27 @@ public class TexturePack {
                             return;
                         }
                         String modver = core.getServer().getModVersion(n);
-                        if((modver != null) && ((rng == null) || HDBlockModels.checkVersionRange(modver, rng))) {
+                        if ((modver != null) && ((rng == null) || HDBlockModels.checkVersionRange(modver, rng))) {
                             found = true;
                             Log.info(n + "[" + modver + "] textures enabled");
                             modname = n;
                             modversion = modver;
-                            if(texturemod == null) texturemod = modname;
+                            if (texturemod == null) texturemod = modname;
                             loadedmods.add(n);
                             // Prime values from block and item unique IDs
                             core.addModBlockItemIDs(modname, varvals);
                             break;
                         }
                     }
-                    if(!found) return;
-                }
-                else if (typeid.equals("texturemod")) {
+                    if (!found) return;
+                } else if (typeid.equals("texturemod")) {
                     texturemod = line;
-                }
-                else if (typeid.equals("texturepath")) {
+                } else if (typeid.equals("texturepath")) {
                     texturepath = line.trim();
-                    if (texturepath.charAt(texturepath.length()-1) != '/') {
+                    if (texturepath.charAt(texturepath.length() - 1) != '/') {
                         texturepath += "/";
                     }
-                }
-                else if (typeid.equals("biome")) {
+                } else if (typeid.equals("biome")) {
                     String args[] = line.split(",");
                     int id = 0;
                     int grasscolormult = -1;
@@ -2446,65 +2431,56 @@ public class TexturePack {
                     int watercolormult = -1;
                     double rain = -1.0;
                     double tmp = -1.0;
-                    for(int i = 0; i < args.length; i++) {
+                    for (int i = 0; i < args.length; i++) {
                         String[] v = args[i].split("=");
-                        if(v.length < 2) {
+                        if (v.length < 2) {
                             Log.severe("Format error - line " + lineNum + " of " + txtname);
                             return;
                         }
-                        if(v[0].equals("id")) {
-                            id = getIntValue(varvals, v[1]);   
-                        }
-                        else if(v[0].equals("grassColorMult")) {
+                        if (v[0].equals("id")) {
+                            id = getIntValue(varvals, v[1]);
+                        } else if (v[0].equals("grassColorMult")) {
                             grasscolormult = Integer.valueOf(v[1], 16);
-                        }
-                        else if(v[0].equals("foliageColorMult")) {
+                        } else if (v[0].equals("foliageColorMult")) {
                             foliagecolormult = Integer.valueOf(v[1], 16);
-                        }
-                        else if(v[0].equals("waterColorMult")) {
+                        } else if (v[0].equals("waterColorMult")) {
                             watercolormult = Integer.valueOf(v[1], 16);
-                        }
-                        else if(v[0].equals("temp")) {
+                        } else if (v[0].equals("temp")) {
                             tmp = Double.parseDouble(v[1]);
-                        }
-                        else if(v[0].equals("rain")) {
+                        } else if (v[0].equals("rain")) {
                             rain = Double.parseDouble(v[1]);
                         }
                     }
-                    if(id > 0) {
+                    if (id > 0) {
                         BiomeMap b = BiomeMap.byBiomeID(id); /* Find biome */
-                        if(b == null) {
+                        if (b == null) {
                             Log.severe("Format error - line " + lineNum + " of " + txtname + ": " + id);
-                        }
-                        else {
-                            if(foliagecolormult != -1)
+                        } else {
+                            if (foliagecolormult != -1)
                                 b.setFoliageColorMultiplier(foliagecolormult);
-                            if(grasscolormult != -1)
+                            if (grasscolormult != -1)
                                 b.setGrassColorMultiplier(grasscolormult);
-                            if(watercolormult != -1)
+                            if (watercolormult != -1)
                                 b.setWaterColorMultiplier(watercolormult);
-                            if(tmp != -1.0)
+                            if (tmp != -1.0)
                                 b.setTemperature(tmp);
-                            if(rain != -1.0)
+                            if (rain != -1.0)
                                 b.setRainfall(rain);
                         }
                     }
-                }
-                else if (typeid.equals("version")) {
+                } else if (typeid.equals("version")) {
                     if (!HDBlockModels.checkVersionRange(mcver, line)) {
                         return;
                     }
-                }
-                else if (typeid.equals("noterrainpng")) {
+                } else if (typeid.equals("noterrainpng")) {
                     if (line.startsWith("true")) {
                         terrain_ok = false;
-                    }
-                    else {
+                    } else {
                         terrain_ok = true;
                     }
                 }
             }
-            if(mod_cfg_needed) {
+            if (mod_cfg_needed) {
                 Log.severe("Error loading configuration file for " + modname);
             }
 
@@ -2514,7 +2490,7 @@ public class TexturePack {
         } catch (NumberFormatException nfx) {
             Log.severe("Format error - line " + rdr.getLineNumber() + " of " + txtname + ": " + nfx.getMessage());
         } finally {
-            if(rdr != null) {
+            if (rdr != null) {
                 try {
                     rdr.close();
                     rdr = null;
@@ -2538,56 +2514,56 @@ public class TexturePack {
 
     /**
      * Read color for given subblock coordinate, with given block id and data and face
-     * @param ps - perspective state
-     * @param mapiter - map iterator
-     * @param rslt - color result (returned with value)
-     * @param blk - block state
+     *
+     * @param ps            - perspective state
+     * @param mapiter       - map iterator
+     * @param rslt          - color result (returned with value)
+     * @param blk           - block state
      * @param lastblocktype - last block ID
-     * @param ss - shader state
+     * @param ss            - shader state
      */
     public final void readColor(final HDPerspectiveState ps, final MapIterator mapiter, final Color rslt, final DynmapBlockState blk, final DynmapBlockState lastblocktype,
-            final TexturePackHDShader.ShaderState ss) {
+                                final TexturePackHDShader.ShaderState ss) {
         HDBlockStateTextureMap map = HDBlockStateTextureMap.getByBlockState(blk);
         BlockStep laststep = ps.getLastBlockStep();
         int patchid = ps.getTextureIndex();   /* See if patch index */
         int textid;
         int faceindex;
-        if(patchid >= 0) {
+        if (patchid >= 0) {
             faceindex = patchid;
-        }
-        else {
+        } else {
             faceindex = laststep.ordinal();
         }
         try {
-        	textid = map.faces[faceindex];
+            textid = map.faces[faceindex];
         } catch (ArrayIndexOutOfBoundsException aioob) {
-        	textid = -1;
+            textid = -1;
         }
         if (ctm != null) {
             int mod = 0;
-            if(textid >= COLORMOD_MULT_INTERNAL) {
+            if (textid >= COLORMOD_MULT_INTERNAL) {
                 mod = (textid / COLORMOD_MULT_INTERNAL) * COLORMOD_MULT_INTERNAL;
                 textid -= mod;
             }
             textid = mod + ctm.mapTexture(mapiter, blk, laststep, textid, ss);
         }
         readColor(ps, mapiter, rslt, blk, lastblocktype, ss, map, laststep, patchid, textid, map.stdrotate);
-        if(map.layers != null) {    /* If layered */
+        if (map.layers != null) {    /* If layered */
             /* While transparent and more layers */
-            while(rslt.isTransparent() && (map.layers[faceindex] >= 0)) {
+            while (rslt.isTransparent() && (map.layers[faceindex] >= 0)) {
                 faceindex = map.layers[faceindex];
                 textid = map.faces[faceindex];
                 readColor(ps, mapiter, rslt, blk, lastblocktype, ss, map, laststep, patchid, textid, map.stdrotate);
             }
         }
     }
-    
+
     /**
      * Read color for given subblock coordinate, with given block id and data and face
      */
     private final void readColor(final HDPerspectiveState ps, final MapIterator mapiter, final Color rslt, final DynmapBlockState blk, final DynmapBlockState lastblocktype,
-                final TexturePackHDShader.ShaderState ss, HDBlockStateTextureMap map, BlockStep laststep, int patchid, int textid, boolean stdrot) {
-        if(textid < 0) {
+                                 final TexturePackHDShader.ShaderState ss, HDBlockStateTextureMap map, BlockStep laststep, int patchid, int textid, boolean stdrot) {
+        if (textid < 0) {
             rslt.setTransparent();
             return;
         }
@@ -2595,71 +2571,77 @@ public class TexturePack {
         // Test if we have no texture modifications
         boolean simplemap = (textid < COLORMOD_MULT_INTERNAL) && (!hasblockcoloring);
         int[] xyz = null;
-        
+
         if (simplemap) {    /* If simple mapping */
             int[] texture = getTileARGB(textid);
             /* Get texture coordinates (U=horizontal(left=0),V=vertical(top=0)) */
             int u = 0, v = 0;
             /* If not patch, compute U and V */
-            if(patchid < 0) {
+            if (patchid < 0) {
                 xyz = ps.getSubblockCoord();
 
-                switch(laststep) {
+                switch (laststep) {
                     case X_MINUS: /* South face: U = East (Z-), V = Down (Y-) */
-                        u = native_scale-xyz[2]-1; v = native_scale-xyz[1]-1; 
+                        u = native_scale - xyz[2] - 1;
+                        v = native_scale - xyz[1] - 1;
                         break;
                     case X_PLUS:    /* North face: U = West (Z+), V = Down (Y-) */
-                        u = xyz[2]; v = native_scale-xyz[1]-1; 
+                        u = xyz[2];
+                        v = native_scale - xyz[1] - 1;
                         break;
                     case Z_MINUS:   /* West face: U = South (X+), V = Down (Y-) */
-                        u = xyz[0]; v = native_scale-xyz[1]-1;
+                        u = xyz[0];
+                        v = native_scale - xyz[1] - 1;
                         break;
                     case Z_PLUS:    /* East face: U = North (X-), V = Down (Y-) */
-                        u = native_scale-xyz[0]-1; v = native_scale-xyz[1]-1;
+                        u = native_scale - xyz[0] - 1;
+                        v = native_scale - xyz[1] - 1;
                         break;
                     case Y_MINUS:   /* U = East(Z-), V = South(X+) */
-                        if(stdrot) {
-                            u = xyz[0]; v = xyz[2];
-                        }
-                        else {
-                            u = native_scale-xyz[2]-1; v = xyz[0];
+                        if (stdrot) {
+                            u = xyz[0];
+                            v = xyz[2];
+                        } else {
+                            u = native_scale - xyz[2] - 1;
+                            v = xyz[0];
                         }
                         break;
                     case Y_PLUS:
-                        if(stdrot) {
-                            u = native_scale-xyz[0]-1; v = xyz[2];
-                        }
-                        else {
-                            u = xyz[2]; v = xyz[0];
+                        if (stdrot) {
+                            u = native_scale - xyz[0] - 1;
+                            v = xyz[2];
+                        } else {
+                            u = xyz[2];
+                            v = xyz[0];
                         }
                         break;
                 }
-            }
-            else {
+            } else {
                 u = fastFloor(ps.getPatchU() * native_scale);
                 v = native_scale - fastFloor(ps.getPatchV() * native_scale) - 1;
             }
             /* Read color from texture */
             try {
-                rslt.setARGB(texture[v*native_scale + u]);
-            } catch(ArrayIndexOutOfBoundsException aoobx) {
-                u = ((u < 0) ? 0 : ((u >= native_scale) ? (native_scale-1) : u));
-                v = ((v < 0) ? 0 : ((v >= native_scale) ? (native_scale-1) : v));
+                rslt.setARGB(texture[v * native_scale + u]);
+            } catch (ArrayIndexOutOfBoundsException aoobx) {
+                u = ((u < 0) ? 0 : ((u >= native_scale) ? (native_scale - 1) : u));
+                v = ((v < 0) ? 0 : ((v >= native_scale) ? (native_scale - 1) : v));
                 try {
-                    rslt.setARGB(texture[v*native_scale + u]);
-                } catch(ArrayIndexOutOfBoundsException oob2) { }
+                    rslt.setARGB(texture[v * native_scale + u]);
+                } catch (ArrayIndexOutOfBoundsException oob2) {
+                }
             }
-            
-            return;            
+
+            return;
         }
-        
+
         /* See if not basic block texture */
         int textop = textid / COLORMOD_MULT_INTERNAL;
         textid = textid % COLORMOD_MULT_INTERNAL;
-        
+
         /* If clear-inside op, get out early */
-        if((textop == COLORMOD_CLEARINSIDE) || (textop == COLORMOD_MULTTONED_CLEARINSIDE)) {
-        	DynmapBlockState lasthit = ss.getLastBlockHit(); // Last surface hit, vs last visited
+        if ((textop == COLORMOD_CLEARINSIDE) || (textop == COLORMOD_MULTTONED_CLEARINSIDE)) {
+            DynmapBlockState lasthit = ss.getLastBlockHit(); // Last surface hit, vs last visited
             /* Check if previous block is same block type as we are: surface is transparent if it is */
             if (blk.matchingBaseState(lasthit) || ((blk.isWaterFilled() && lasthit.isWaterFilled()) && ps.isOnFace())) {
                 rslt.setTransparent();
@@ -2668,8 +2650,7 @@ public class TexturePack {
             /* If water block, to watercolor tone op */
             if (blk.isWater()) {
                 textop = COLORMOD_WATERTONED;
-            }
-            else if(textop == COLORMOD_MULTTONED_CLEARINSIDE) {
+            } else if (textop == COLORMOD_MULTTONED_CLEARINSIDE) {
                 textop = COLORMOD_MULTTONED;
             }
         }
@@ -2677,89 +2658,99 @@ public class TexturePack {
         int[] texture = getTileARGB(textid);
         /* Get texture coordinates (U=horizontal(left=0),V=vertical(top=0)) */
         int u = 0, v = 0, tmp;
-        
-        if(patchid < 0) {
+
+        if (patchid < 0) {
             if (xyz == null) xyz = ps.getSubblockCoord();
-            switch(laststep) {
+            switch (laststep) {
                 case X_MINUS: /* South face: U = East (Z-), V = Down (Y-) */
-                    u = native_scale-xyz[2]-1; v = native_scale-xyz[1]-1; 
+                    u = native_scale - xyz[2] - 1;
+                    v = native_scale - xyz[1] - 1;
                     break;
                 case X_PLUS:    /* North face: U = West (Z+), V = Down (Y-) */
-                    u = xyz[2]; v = native_scale-xyz[1]-1; 
+                    u = xyz[2];
+                    v = native_scale - xyz[1] - 1;
                     break;
                 case Z_MINUS:   /* West face: U = South (X+), V = Down (Y-) */
-                    u = xyz[0]; v = native_scale-xyz[1]-1;
+                    u = xyz[0];
+                    v = native_scale - xyz[1] - 1;
                     break;
                 case Z_PLUS:    /* East face: U = North (X-), V = Down (Y-) */
-                    u = native_scale-xyz[0]-1; v = native_scale-xyz[1]-1;
+                    u = native_scale - xyz[0] - 1;
+                    v = native_scale - xyz[1] - 1;
                     break;
                 case Y_MINUS:   /* U = East(Z-), V = South(X+) */
-                    if(stdrot) {
-                        u = xyz[0]; v = xyz[2];
-                    }
-                    else {
-                        u = native_scale-xyz[2]-1; v = xyz[0];
+                    if (stdrot) {
+                        u = xyz[0];
+                        v = xyz[2];
+                    } else {
+                        u = native_scale - xyz[2] - 1;
+                        v = xyz[0];
                     }
                     break;
                 case Y_PLUS:
-                    if(stdrot) {
-                        u = native_scale-xyz[0]-1; v = xyz[2];
-                    }
-                    else {
-                        u = xyz[2]; v = xyz[0];
+                    if (stdrot) {
+                        u = native_scale - xyz[0] - 1;
+                        v = xyz[2];
+                    } else {
+                        u = xyz[2];
+                        v = xyz[0];
                     }
                     break;
             }
-        }
-        else {
+        } else {
             u = fastFloor(ps.getPatchU() * native_scale);
             v = native_scale - fastFloor(ps.getPatchV() * native_scale) - 1;
         }
         /* Handle U-V transorms before fetching color */
-        switch(textop) {
+        switch (textop) {
             case COLORMOD_ROT90:
-                tmp = u; u = native_scale - v - 1; v = tmp;
+                tmp = u;
+                u = native_scale - v - 1;
+                v = tmp;
                 break;
             case COLORMOD_ROT180:
-                u = native_scale - u - 1; v = native_scale - v - 1;
+                u = native_scale - u - 1;
+                v = native_scale - v - 1;
                 break;
             case COLORMOD_ROT270:
             case COLORMOD_GRASSTONED270:
             case COLORMOD_FOLIAGETONED270:
             case COLORMOD_WATERTONED270:
-                tmp = u; u = v; v = native_scale - tmp - 1;
+                tmp = u;
+                u = v;
+                v = native_scale - tmp - 1;
                 break;
             case COLORMOD_FLIPHORIZ:
                 u = native_scale - u - 1;
                 break;
             case COLORMOD_SHIFTDOWNHALF:
-                if(v < native_scale/2) {
+                if (v < native_scale / 2) {
                     rslt.setTransparent();
                     return;
                 }
-                v -= native_scale/2;
+                v -= native_scale / 2;
                 break;
             case COLORMOD_SHIFTDOWNHALFANDFLIPHORIZ:
-                if(v < native_scale/2) {
+                if (v < native_scale / 2) {
                     rslt.setTransparent();
                     return;
                 }
-                v -= native_scale/2;
+                v -= native_scale / 2;
                 u = native_scale - u - 1;
                 break;
             case COLORMOD_INCLINEDTORCH:
-                if(v >= (3*native_scale/4)) {
+                if (v >= (3 * native_scale / 4)) {
                     rslt.setTransparent();
                     return;
                 }
-                v += native_scale/4;
-                if(u < native_scale/2) u = native_scale/2-1;
-                if(u > native_scale/2) u = native_scale/2;
+                v += native_scale / 4;
+                if (u < native_scale / 2) u = native_scale / 2 - 1;
+                if (u > native_scale / 2) u = native_scale / 2;
                 break;
             case COLORMOD_GRASSSIDE:
                 boolean do_grass_side = false;
                 boolean do_snow_side = false;
-                if(ss.do_better_grass) {
+                if (ss.do_better_grass) {
                     mapiter.unstepPosition(laststep);
                     if (mapiter.getBlockType().isSnow())
                         do_snow_side = true;
@@ -2767,28 +2758,25 @@ public class TexturePack {
                         do_grass_side = true;
                     mapiter.stepPosition(laststep);
                 }
-                
+
                 /* Check if snow above block */
-                if(mapiter.getBlockTypeAt(BlockStep.Y_PLUS).isSnow()) {
-                    if(do_snow_side) {
+                if (mapiter.getBlockTypeAt(BlockStep.Y_PLUS).isSnow()) {
+                    if (do_snow_side) {
                         texture = getTileARGB(TILEINDEX_SNOW); /* Snow full side block */
                         textid = TILEINDEX_SNOW;
-                    }
-                    else {
+                    } else {
                         texture = getTileARGB(TILEINDEX_SNOWSIDE); /* Snow block */
                         textid = TILEINDEX_SNOWSIDE;
                     }
                     textop = 0;
-                }
-                else {  /* Else, check the grass color overlay */
-                    if(do_grass_side) {
+                } else {  /* Else, check the grass color overlay */
+                    if (do_grass_side) {
                         texture = getTileARGB(TILEINDEX_GRASS); /* Grass block */
                         textid = TILEINDEX_GRASS;
                         textop = COLORMOD_GRASSTONED;   /* Force grass toning */
-                    }
-                    else {
-                        int ovclr = getTileARGB(TILEINDEX_GRASSMASK)[v*native_scale+u];
-                        if((ovclr & 0xFF000000) != 0) { /* Hit? */
+                    } else {
+                        int ovclr = getTileARGB(TILEINDEX_GRASSMASK)[v * native_scale + u];
+                        if ((ovclr & 0xFF000000) != 0) { /* Hit? */
                             texture = getTileARGB(TILEINDEX_GRASSMASK); /* Use it */
                             textop = COLORMOD_GRASSTONED;   /* Force grass toning */
                         }
@@ -2797,18 +2785,23 @@ public class TexturePack {
                 break;
             case COLORMOD_LILYTONED:
                 /* Rotate texture based on lily orientation function (from renderBlockLilyPad in RenderBlocks.jara in MCP) */
-                long l1 = (long)(mapiter.getX() * 0x2fc20f) ^ (long)mapiter.getZ() * 0x6ebfff5L ^ (long)mapiter.getY();
+                long l1 = (long) (mapiter.getX() * 0x2fc20f) ^ (long) mapiter.getZ() * 0x6ebfff5L ^ (long) mapiter.getY();
                 l1 = l1 * l1 * 0x285b825L + l1 * 11L;
-                int orientation = (int)(l1 >> 16 & 3L);
-                switch(orientation) {
+                int orientation = (int) (l1 >> 16 & 3L);
+                switch (orientation) {
                     case 0:
-                        tmp = u; u = native_scale - v - 1; v = tmp;
+                        tmp = u;
+                        u = native_scale - v - 1;
+                        v = tmp;
                         break;
                     case 1:
-                        u = native_scale - u - 1; v = native_scale - v - 1;
+                        u = native_scale - u - 1;
+                        v = native_scale - v - 1;
                         break;
                     case 2:
-                        tmp = u; u = v; v = native_scale - tmp - 1;
+                        tmp = u;
+                        u = v;
+                        v = native_scale - tmp - 1;
                         break;
                     case 3:
                         break;
@@ -2817,7 +2810,7 @@ public class TexturePack {
         }
         /* Read color from texture */
         try {
-            rslt.setARGB(texture[v*native_scale + u]);
+            rslt.setARGB(texture[v * native_scale + u]);
         } catch (ArrayIndexOutOfBoundsException aioobx) {
             rslt.setARGB(0);
         }
@@ -2831,91 +2824,82 @@ public class TexturePack {
             LoadedImage img = imgs[idx.intValue()];
             if (img.argb != null) {
                 custclrmult = mapiter.getSmoothWaterColorMultiplier(img.argb);
-            }
-            else {
+            } else {
                 hasblockcoloring = false;
             }
         }
         if (!hasblockcoloring) {
             // Switch based on texture modifier
-            switch(textop) {
+            switch (textop) {
                 case COLORMOD_GRASSTONED:
                 case COLORMOD_GRASSTONED270:
-                    if(ss.do_biome_shading) {
-                        if(imgs[IMG_SWAMPGRASSCOLOR] != null)
+                    if (ss.do_biome_shading) {
+                        if (imgs[IMG_SWAMPGRASSCOLOR] != null)
                             clrmult = mapiter.getSmoothColorMultiplier(imgs[IMG_GRASSCOLOR].argb, imgs[IMG_SWAMPGRASSCOLOR].argb);
                         else
                             clrmult = mapiter.getSmoothGrassColorMultiplier(imgs[IMG_GRASSCOLOR].argb);
-                    }
-                    else {
+                    } else {
                         clrmult = imgs[IMG_GRASSCOLOR].trivial_color;
                     }
                     break;
                 case COLORMOD_FOLIAGETONED:
                 case COLORMOD_FOLIAGETONED270:
-                    if(ss.do_biome_shading) {
-                        if(imgs[IMG_SWAMPFOLIAGECOLOR] != null)
+                    if (ss.do_biome_shading) {
+                        if (imgs[IMG_SWAMPFOLIAGECOLOR] != null)
                             clrmult = mapiter.getSmoothColorMultiplier(imgs[IMG_FOLIAGECOLOR].argb, imgs[IMG_SWAMPFOLIAGECOLOR].argb);
                         else
                             clrmult = mapiter.getSmoothFoliageColorMultiplier(imgs[IMG_FOLIAGECOLOR].argb);
-                    }
-                    else {
+                    } else {
                         clrmult = imgs[IMG_FOLIAGECOLOR].trivial_color;
                     }
                     break;
                 case COLORMOD_FOLIAGEMULTTONED:
-                    if(ss.do_biome_shading) {
-                        if(imgs[IMG_SWAMPFOLIAGECOLOR] != null)
+                    if (ss.do_biome_shading) {
+                        if (imgs[IMG_SWAMPFOLIAGECOLOR] != null)
                             clrmult = mapiter.getSmoothColorMultiplier(imgs[IMG_FOLIAGECOLOR].argb, imgs[IMG_SWAMPFOLIAGECOLOR].argb);
                         else
                             clrmult = mapiter.getSmoothFoliageColorMultiplier(imgs[IMG_FOLIAGECOLOR].argb);
-                    }
-                    else {
+                    } else {
                         clrmult = imgs[IMG_FOLIAGECOLOR].trivial_color;
                     }
-                    if(map.custColorMult != null) {
+                    if (map.custColorMult != null) {
                         clrmult = ((clrmult & 0xFEFEFE) + map.custColorMult.getColorMultiplier(mapiter)) / 2;
-                    }
-                    else {
+                    } else {
                         clrmult = ((clrmult & 0xFEFEFE) + map.colorMult) / 2;
                     }
                     break;
 
                 case COLORMOD_WATERTONED:
                 case COLORMOD_WATERTONED270:
-                    if(imgs[IMG_WATERCOLORX] != null) {
-                        if(ss.do_biome_shading) {
+                    if (imgs[IMG_WATERCOLORX] != null) {
+                        if (ss.do_biome_shading) {
                             clrmult = mapiter.getSmoothWaterColorMultiplier(imgs[IMG_WATERCOLORX].argb);
-                        }
-                        else {
+                        } else {
                             clrmult = imgs[IMG_WATERCOLORX].trivial_color;
                         }
-                    }
-                    else {
-                        if(ss.do_biome_shading) {
+                    } else {
+                        if (ss.do_biome_shading) {
                             clrmult = mapiter.getSmoothWaterColorMultiplier();
                         }
                     }
                     break;
                 case COLORMOD_BIRCHTONED:
-                    if(ss.do_biome_shading) {
-                        if(imgs[IMG_BIRCHCOLOR] != null)
+                    if (ss.do_biome_shading) {
+                        if (imgs[IMG_BIRCHCOLOR] != null)
                             clrmult = mapiter.getSmoothFoliageColorMultiplier(imgs[IMG_BIRCHCOLOR].argb);
                         else
                             clrmult = colorMultBirch;
-                    }
-                    else {
+                    } else {
                         clrmult = colorMultBirch;
                     }
                     break;
                 case COLORMOD_PINETONED:
-                    if(ss.do_biome_shading) {
-                        if(imgs[IMG_PINECOLOR] != null)
+                    if (ss.do_biome_shading) {
+                        if (imgs[IMG_PINECOLOR] != null)
                             clrmult = mapiter.getSmoothFoliageColorMultiplier(imgs[IMG_PINECOLOR].argb);
                         else
                             clrmult = colorMultPine;
-                    }
-                    else {
+                    } else {
                         clrmult = colorMultPine;
                     }
                     break;
@@ -2923,42 +2907,42 @@ public class TexturePack {
                     clrmult = colorMultLily;
                     break;
                 case COLORMOD_MULTTONED:    /* Use color multiplier */
-                    if(map.custColorMult != null) {
+                    if (map.custColorMult != null) {
                         clrmult = map.custColorMult.getColorMultiplier(mapiter);
-                    }
-                    else {
+                    } else {
                         clrmult = map.colorMult;
                     }
-                    if((clrmult & 0xFF000000) != 0) {
+                    if ((clrmult & 0xFF000000) != 0) {
                         clralpha = clrmult & 0xFF000000;
                     }
                     break;
             }
         }
-        
-        if((clrmult != -1) && (clrmult != 0)) {
+
+        if ((clrmult != -1) && (clrmult != 0)) {
             rslt.blendColor(clrmult | clralpha);
         }
         if (hasblockcoloring && (custclrmult != -1)) {
             rslt.blendColor(custclrmult | clralpha);
         }
     }
-    
+
     private static final void makeAlphaPure(int[] argb) {
-        for(int i = 0; i < argb.length; i++) {
-            if((argb[i] & 0xFF000000) != 0)
+        for (int i = 0; i < argb.length; i++) {
+            if ((argb[i] & 0xFF000000) != 0)
                 argb[i] |= 0xFF000000;
         }
     }
 
     private static final int fastFloor(double f) {
-        return ((int)(f + 1000000000.0)) - 1000000000;
+        return ((int) (f + 1000000000.0)) - 1000000000;
     }
 
     /**
      * Get tile index, based on tile file name and relative index within tile file
+     *
      * @param fname - filename
-     * @param idx - tile index (= (y * xdim) + x)
+     * @param idx   - tile index (= (y * xdim) + x)
      * @return global tile index, or -1 if not found
      */
     public static int findDynamicTile(String fname, int idx) {
@@ -2973,15 +2957,16 @@ public class TexturePack {
         }
         return -1;
     }
+
     /**
      * Add new dynmaic file definition, or return existing
-     * 
-     * @param fname - filename
+     *
+     * @param fname   - filename
      * @param modname - mod name
-     * @param xdim - x dimension
-     * @param ydim - y dimension
-     * @param fmt - tile file format
-     * @param args - args for file format
+     * @param xdim    - x dimension
+     * @param ydim    - y dimension
+     * @param fmt     - tile file format
+     * @param args    - args for file format
      * @return dynamic file index
      */
     public static int findOrAddDynamicTileFile(String fname, String modname, int xdim, int ydim, TileFileFormat fmt, String[] args) {
@@ -3003,9 +2988,9 @@ public class TexturePack {
         if (fmt == TileFileFormat.BIOME) {
             f.used = true;
         }
-        switch(fmt) {
+        switch (fmt) {
             case GRID:
-                f.tile_to_dyntile = new int[xdim*ydim];
+                f.tile_to_dyntile = new int[xdim * ydim];
                 break;
             case CHEST:
                 f.tile_to_dyntile = new int[TILEINDEX_CHEST_COUNT]; /* 6 images for chest tile */
@@ -3022,81 +3007,82 @@ public class TexturePack {
             case BED:
                 f.tile_to_dyntile = new int[TILEINDEX_BED_COUNT]; /* 18 images for tile */
                 break;
-            case CUSTOM:
-                {
-                    List<CustomTileRec> recs = new ArrayList<CustomTileRec>();
-                    for(String a : args) {
-                        String[] v = a.split("=");
-                        if(v.length != 2) continue;
-                        if(v[0].startsWith("tile")) {
-                            int id = 0;
-                            try {
-                                id = Integer.parseInt(v[0].substring(4));
-                            } catch (NumberFormatException nfx) {
-                                Log.warning("Bad tile ID: " + v[0]);
-                                continue;
+            case CUSTOM: {
+                List<CustomTileRec> recs = new ArrayList<CustomTileRec>();
+                for (String a : args) {
+                    String[] v = a.split("=");
+                    if (v.length != 2) continue;
+                    if (v[0].startsWith("tile")) {
+                        int id = 0;
+                        try {
+                            id = Integer.parseInt(v[0].substring(4));
+                        } catch (NumberFormatException nfx) {
+                            Log.warning("Bad tile ID: " + v[0]);
+                            continue;
+                        }
+                        while (recs.size() <= id) {
+                            recs.add(null);
+                        }
+                        CustomTileRec rec = new CustomTileRec();
+                        try {
+                            String[] coords = v[1].split("/");
+                            String[] topleft = coords[0].split(":");
+                            rec.srcx = Integer.parseInt(topleft[0]);
+                            rec.srcy = Integer.parseInt(topleft[1]);
+                            String[] size = coords[1].split(":");
+                            rec.width = Integer.parseInt(size[0]);
+                            rec.height = Integer.parseInt(size[1]);
+                            if (coords.length >= 3) {
+                                String[] dest = coords[2].split(":");
+                                rec.targetx = Integer.parseInt(dest[0]);
+                                rec.targety = Integer.parseInt(dest[1]);
                             }
-                            while(recs.size() <= id) {
-                                recs.add(null);
-                            }
-                            CustomTileRec rec = new CustomTileRec();
-                            try {
-                                String[] coords = v[1].split("/");
-                                String[] topleft = coords[0].split(":");
-                                rec.srcx = Integer.parseInt(topleft[0]);
-                                rec.srcy = Integer.parseInt(topleft[1]);
-                                String[] size = coords[1].split(":");
-                                rec.width = Integer.parseInt(size[0]);
-                                rec.height = Integer.parseInt(size[1]);
-                                if(coords.length >= 3) {
-                                    String[] dest = coords[2].split(":");
-                                    rec.targetx = Integer.parseInt(dest[0]);
-                                    rec.targety = Integer.parseInt(dest[1]);
-                                }
-                                recs.set(id,  rec);
-                            } catch (Exception x) {
-                                Log.warning("Bad custom tile coordinate: " + v[1]);
-                            }
+                            recs.set(id, rec);
+                        } catch (Exception x) {
+                            Log.warning("Bad custom tile coordinate: " + v[1]);
                         }
                     }
-                    f.tile_to_dyntile = new int[recs.size()];
-                    f.cust = recs;
                 }
-                break;
+                f.tile_to_dyntile = new int[recs.size()];
+                f.cust = recs;
+            }
+            break;
             case SKIN:
                 f.tile_to_dyntile = new int[TILEINDEX_SKIN_COUNT]; /* 6 images for skin tile */
                 break;
             case TILESET:
-                f.tile_to_dyntile = new int[xdim*ydim];
+                f.tile_to_dyntile = new int[xdim * ydim];
                 break;
             case BIOME:
                 f.tile_to_dyntile = new int[1];
                 break;
             default:
-                f.tile_to_dyntile = new int[xdim*ydim];
+                f.tile_to_dyntile = new int[xdim * ydim];
                 break;
         }
-        Arrays.fill(f.tile_to_dyntile,  -1);
+        Arrays.fill(f.tile_to_dyntile, -1);
         f.idx = addonfiles.size();
         addonfiles.add(f);
         addonfilesbyname.put(f.filename, f);
         return f.idx;
     }
+
     /**
      * Add or find dynamic tile index of given dynamic tile
+     *
      * @param dynfile_idx - index of file
-     * @param tile_id - ID of tile within file
+     * @param tile_id     - ID of tile within file
      * @return global tile ID
      */
     public static int findOrAddDynamicTile(int dynfile_idx, int tile_id) {
         DynamicTileFile f = addonfiles.get(dynfile_idx);
-        if(f == null) {
+        if (f == null) {
             throw new NumberFormatException("Invalid add-on file index: " + dynfile_idx);
         }
         if (tile_id >= f.tile_to_dyntile.length) {
             throw new NumberFormatException("Invalid index " + tile_id + " for texture file " + f.filename + " on mod " + f.modname);
         }
-        if(f.tile_to_dyntile[tile_id] < 0) {   /* Not assigned yet? */
+        if (f.tile_to_dyntile[tile_id] < 0) {   /* Not assigned yet? */
             f.tile_to_dyntile[tile_id] = next_dynamic_tile;
             next_dynamic_tile++;    /* Allocate next ID */
         }
@@ -3105,7 +3091,7 @@ public class TexturePack {
     }
 
     private static final int[] smooth_water_mult = new int[10];
-    
+
     public static int getTextureIDAt(MapIterator mapiter, DynmapBlockState blk, BlockStep face) {
         HDBlockStateTextureMap map = HDBlockStateTextureMap.getByBlockState(blk);
         int idx = -1;
@@ -3114,21 +3100,21 @@ public class TexturePack {
             if (map.faces != null) {
                 if (sideidx < map.faces.length)
                     idx = map.faces[sideidx];
-                else 
+                else
                     idx = map.faces[0];
             }
         }
-        if(idx > 0)
+        if (idx > 0)
             idx = idx % COLORMOD_MULT_INTERNAL;
         return idx;
     }
-    
+
     private static final String PALETTE_BLOCK_KEY = "palette.block.";
 
     private void processCustomColorMap(String fname, String ids) {
         // Register file name
         int idx = findOrAddDynamicTileFile(fname, null, 1, 1, TileFileFormat.BIOME, new String[0]);
-        if(idx < 0) {
+        if (idx < 0) {
             Log.info("Error registering custom color file: " + fname);
             return;
         }
@@ -3145,8 +3131,7 @@ public class TexturePack {
                 if (blk.isAir()) {
                     Log.info("Bad custom color block ID: " + tok[0]);
                 }
-            }
-            else if (tok.length == 2) { /* ID : meta */
+            } else if (tok.length == 2) { /* ID : meta */
                 blkname = tok[0];
                 try {
                     meta = Integer.parseInt(tok[1]);
@@ -3166,8 +3151,7 @@ public class TexturePack {
                     if (blk.isNotAir()) {
                         this.blockColoring.setBlkStateValue(blk, index);
                     }
-                }
-                else if (meta == -1) {  /* All meta IDs */
+                } else if (meta == -1) {  /* All meta IDs */
                     for (int v = 0; v < blk.getStateCount(); v++) {
                         DynmapBlockState b = blk.getState(v);
                         if (b.isNotAir()) {
@@ -3178,48 +3162,51 @@ public class TexturePack {
             }
         }
     }
+
     private void processCustomColors(Properties p) {
         // Loop through keys
-        for(String pname : p.stringPropertyNames()) {
-            if(!pname.startsWith(PALETTE_BLOCK_KEY))
+        for (String pname : p.stringPropertyNames()) {
+            if (!pname.startsWith(PALETTE_BLOCK_KEY))
                 continue;
             String v = p.getProperty(pname);
             String fname = pname.substring(PALETTE_BLOCK_KEY.length()).trim(); // Get filename of color map
-            if(fname.charAt(0) == '/') fname = fname.substring(1); // Strip leading /
-            if(fname.charAt(0) == '~') fname = "assets/minecraft/mcpatcher" + fname.substring(1);
+            if (fname.charAt(0) == '/') fname = fname.substring(1); // Strip leading /
+            if (fname.charAt(0) == '~') fname = "assets/minecraft/mcpatcher" + fname.substring(1);
             processCustomColorMap(fname, v);
         }
     }
-    
+
     static {
         /*
          * Generate smoothed swamp multipliers (indexed by swamp biome count)
          */
         Color c = new Color();
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
             /* Use water color multiplier base for 1.1 (E0FFAE) */
-            int r = (((9-i) * 0xFF) + (i * 0xE0)) / 9;
+            int r = (((9 - i) * 0xFF) + (i * 0xE0)) / 9;
             int g = 0xFF;
-            int b = (((9-i) * 0xFF) + (i * 0xAE)) / 9;
+            int b = (((9 - i) * 0xFF) + (i * 0xAE)) / 9;
             c.setRGBA(r & 0xFE, g & 0xFE, b & 0xFE, 0xFF);
             smooth_water_mult[i] = c.getARGB();
         }
     }
-    
+
     public int getTrivialFoliageMultiplier() {
         return imgs[IMG_FOLIAGECOLOR].argb[BiomeMap.FOREST.biomeLookup()];
     }
+
     public int getTrivialGrassMultiplier() {
         return imgs[IMG_GRASSCOLOR].argb[BiomeMap.FOREST.biomeLookup()];
     }
+
     public int getTrivialWaterMultiplier() {
-        if(imgs[IMG_WATERCOLORX] != null) {
+        if (imgs[IMG_WATERCOLORX] != null) {
             return imgs[IMG_WATERCOLORX].argb[BiomeMap.FOREST.biomeLookup()];
-        }
-        else {
+        } else {
             return 0xFFFFFF;
         }
     }
+
     public int getCustomBlockMultiplier(DynmapBlockState blk) {
         Integer idx = this.blockColoring.getBlkStateValue(blk);
         if (idx != null) {
@@ -3244,7 +3231,7 @@ public class TexturePack {
         OBJExport exp;
         String name;
     }
-    
+
     // Encode image as PNG and add to ZIP
     private void addImageToZip(String idstr, int idx, int colormult, ExportedTexturePack etp) throws IOException {
         if (etp.txtids.containsKey(idstr)) {   // Already in set?
@@ -3257,8 +3244,7 @@ public class TexturePack {
             for (int i = 0; i < etp.img.argb_buf.length; i++) {
                 etp.img.argb_buf[i] = Color.blendColor(argb[i], colormult);
             }
-        }
-        else {  // Else, just copy into destination
+        } else {  // Else, just copy into destination
             for (int i = 0; i < etp.img.argb_buf.length; i++) {
                 etp.img.argb_buf[i] = argb[i];
             }
@@ -3281,12 +3267,12 @@ public class TexturePack {
             }
         }
         BufferOutputStream baos = new BufferOutputStream();
-        
+
         ImageIO.setUseCache(false); /* Don't use file cache - too small to be worth it */
 
         String fname = etp.name + "/" + idstr + ".png";
         etp.exp.startExportedFile(fname);
-        
+
         ImageIO.write(etp.img.buf_img, "png", baos);
 
         etp.exp.addBytesToExportedFile(baos.buf, 0, baos.len);
@@ -3301,24 +3287,25 @@ public class TexturePack {
             }
             fname_a = etp.name + "/" + idstr + "_a.png";
             etp.exp.startExportedFile(fname_a);
-            
+
             baos.reset();
             ImageIO.write(etp.img.buf_img, "png", baos);
 
             etp.exp.addBytesToExportedFile(baos.buf, 0, baos.len);
             etp.exp.finishExportedFile();
         }
-        
+
         ExportedTexture et = new ExportedTexture();
         et.filename = fname;
         et.filename_a = fname_a;
         if (w > 0)
-            et.diffuseColor = new Color((int)(r / w), (int)(g / w), (int)(b / w));
+            et.diffuseColor = new Color((int) (r / w), (int) (g / w), (int) (b / w));
         else
             et.diffuseColor = new Color();
         et.material = getMaterialTypeByTile(idx);
         etp.txtids.put(idstr, et);  // Add to set
     }
+
     // Export texture pack as OBJ format material library
     public void exportAsOBJMaterialLibrary(OBJExport exp, String name) throws IOException {
         ExportedTexturePack etp = new ExportedTexturePack();
@@ -3333,7 +3320,7 @@ public class TexturePack {
             int mult = -1;
             String txtbase = txt;
             if ((off > 0) && ((off + 8) == txt.length())) {
-                String end = txt.substring(off+2);
+                String end = txt.substring(off + 2);
                 try {
                     mult = Integer.parseInt(end, 16);
                 } catch (NumberFormatException x) {
@@ -3352,8 +3339,7 @@ public class TexturePack {
                 } catch (NumberFormatException x) {
                     Log.warning("Invalid texture ID " + txtbase);
                 }
-            }
-            else {
+            } else {
                 id = txt_id;
             }
             if (id >= 0) {
@@ -3366,8 +3352,8 @@ public class TexturePack {
         for (String id : ids) {
             ExportedTexture et = etp.txtids.get(id);
             String lines = "newmtl " + id + "\n";
-            lines += String.format(Locale.US, "Ka %.3f %.3f %.3f\n", (double)et.diffuseColor.getRed() / 256.0, (double)et.diffuseColor.getGreen() / 256.0, (double) et.diffuseColor.getBlue() / 256.0);
-            lines += String.format(Locale.US, "Kd %.3f %.3f %.3f\n", (double)et.diffuseColor.getRed() / 256.0, (double)et.diffuseColor.getGreen() / 256.0, (double) et.diffuseColor.getBlue() / 256.0);
+            lines += String.format(Locale.US, "Ka %.3f %.3f %.3f\n", (double) et.diffuseColor.getRed() / 256.0, (double) et.diffuseColor.getGreen() / 256.0, (double) et.diffuseColor.getBlue() / 256.0);
+            lines += String.format(Locale.US, "Kd %.3f %.3f %.3f\n", (double) et.diffuseColor.getRed() / 256.0, (double) et.diffuseColor.getGreen() / 256.0, (double) et.diffuseColor.getBlue() / 256.0);
             lines += "map_Kd " + et.filename + "\n";
             lines += "map_Ka " + et.filename + "\n";
             if (et.filename_a != null) {
@@ -3378,8 +3364,7 @@ public class TexturePack {
                 lines += String.format(Locale.US, "Ns %.3f\n", et.material.Ns);
                 lines += "Ks 0.500 0.500 0.500\n";
                 lines += String.format("illum %d\n", et.material.illum);
-            }
-            else {
+            } else {
                 lines += "Ks 0.000 0.000 0.000\n";
             }
             lines += "\n";
@@ -3387,8 +3372,9 @@ public class TexturePack {
         }
         exp.finishExportedFile();
     }
-    private static final int[] deftxtidx = { 0, 1, 2, 3, 4, 5 };
-    
+
+    private static final int[] deftxtidx = {0, 1, 2, 3, 4, 5};
+
     public String[] getCurrentBlockMaterials(DynmapBlockState blk, MapIterator mapiter, int[] txtidx, BlockStep[] steps) {
         HDBlockStateTextureMap map = HDBlockStateTextureMap.getByBlockState(blk);
         if (txtidx == null) txtidx = deftxtidx;
@@ -3401,8 +3387,7 @@ public class TexturePack {
             LoadedImage img = imgs[blockcoloring.intValue()];
             if (img.argb != null) {
                 custclrmult = mapiter.getSmoothWaterColorMultiplier(img.argb);
-            }
-            else {
+            } else {
                 blockcoloring = null;
             }
         }
@@ -3422,12 +3407,11 @@ public class TexturePack {
                 /* If water block, to watercolor tone op */
                 if (blk.isWater()) {
                     mod = COLORMOD_WATERTONED;
-                }
-                else if (mod == COLORMOD_MULTTONED_CLEARINSIDE) {
+                } else if (mod == COLORMOD_MULTTONED_CLEARINSIDE) {
                     mod = COLORMOD_MULTTONED;
                 }
             }
-            
+
             if (ctm != null) {
                 textid = ctm.mapTexture(mapiter, blk, step, textid, null);
             }
@@ -3437,50 +3421,47 @@ public class TexturePack {
                 BiomeMap bio;
                 if (blockcoloring == null) {
 
-                switch (mod) {
-                    case COLORMOD_GRASSTONED:
-                    case COLORMOD_GRASSTONED270:
-                        bio = mapiter.getBiome();
-                        if ((bio == BiomeMap.SWAMPLAND) && (imgs[IMG_SWAMPGRASSCOLOR] != null)) {
-                            mult = getBiomeTonedColor(imgs[IMG_SWAMPGRASSCOLOR], -1, bio, blk);
-                        }
-                        else {
-                            mult = getBiomeTonedColor(imgs[IMG_GRASSCOLOR], -1, bio, blk);
-                        }
-                        break;
-                    case COLORMOD_FOLIAGETONED:
-                    case COLORMOD_FOLIAGETONED270:
-                    case COLORMOD_FOLIAGEMULTTONED:
-                        mult = getBiomeTonedColor(imgs[IMG_FOLIAGECOLOR], -1, mapiter.getBiome(), blk);
-                        break;
-                    case COLORMOD_WATERTONED:
-                    case COLORMOD_WATERTONED270:
-                        mult = getBiomeTonedColor(imgs[IMG_WATERCOLORX], -1, mapiter.getBiome(), blk);
-                        break;
-                    case COLORMOD_PINETONED:
-                        mult = getBiomeTonedColor(imgs[IMG_PINECOLOR], colorMultPine, mapiter.getBiome(), blk);
-                        break;
-                    case COLORMOD_BIRCHTONED:
-                        mult = getBiomeTonedColor(imgs[IMG_BIRCHCOLOR], colorMultBirch, mapiter.getBiome(), blk);
-                        break;
-                    case COLORMOD_LILYTONED:
-                        mult = getBiomeTonedColor(null, colorMultLily, mapiter.getBiome(), blk);
-                        break;
-                    case COLORMOD_MULTTONED:
-                    case COLORMOD_MULTTONED_CLEARINSIDE:
-                        if(map.custColorMult == null) {
-                            mult = getBiomeTonedColor(null, map.colorMult, mapiter.getBiome(), blk);
-                        }
-                        else {
-                            mult = map.custColorMult.getColorMultiplier(mapiter);
-                        }
-                        break;
-                    default:
-                        mult = getBiomeTonedColor(null, -1, mapiter.getBiome(), blk);
-                        break;
-                }
-                }
-                else {
+                    switch (mod) {
+                        case COLORMOD_GRASSTONED:
+                        case COLORMOD_GRASSTONED270:
+                            bio = mapiter.getBiome();
+                            if ((bio == BiomeMap.SWAMPLAND) && (imgs[IMG_SWAMPGRASSCOLOR] != null)) {
+                                mult = getBiomeTonedColor(imgs[IMG_SWAMPGRASSCOLOR], -1, bio, blk);
+                            } else {
+                                mult = getBiomeTonedColor(imgs[IMG_GRASSCOLOR], -1, bio, blk);
+                            }
+                            break;
+                        case COLORMOD_FOLIAGETONED:
+                        case COLORMOD_FOLIAGETONED270:
+                        case COLORMOD_FOLIAGEMULTTONED:
+                            mult = getBiomeTonedColor(imgs[IMG_FOLIAGECOLOR], -1, mapiter.getBiome(), blk);
+                            break;
+                        case COLORMOD_WATERTONED:
+                        case COLORMOD_WATERTONED270:
+                            mult = getBiomeTonedColor(imgs[IMG_WATERCOLORX], -1, mapiter.getBiome(), blk);
+                            break;
+                        case COLORMOD_PINETONED:
+                            mult = getBiomeTonedColor(imgs[IMG_PINECOLOR], colorMultPine, mapiter.getBiome(), blk);
+                            break;
+                        case COLORMOD_BIRCHTONED:
+                            mult = getBiomeTonedColor(imgs[IMG_BIRCHCOLOR], colorMultBirch, mapiter.getBiome(), blk);
+                            break;
+                        case COLORMOD_LILYTONED:
+                            mult = getBiomeTonedColor(null, colorMultLily, mapiter.getBiome(), blk);
+                            break;
+                        case COLORMOD_MULTTONED:
+                        case COLORMOD_MULTTONED_CLEARINSIDE:
+                            if (map.custColorMult == null) {
+                                mult = getBiomeTonedColor(null, map.colorMult, mapiter.getBiome(), blk);
+                            } else {
+                                mult = map.custColorMult.getColorMultiplier(mapiter);
+                            }
+                            break;
+                        default:
+                            mult = getBiomeTonedColor(null, -1, mapiter.getBiome(), blk);
+                            break;
+                    }
+                } else {
                     mult = custclrmult;
                 }
                 if ((mult & 0xFFFFFF) != 0xFFFFFF) {
@@ -3518,7 +3499,7 @@ public class TexturePack {
                     case COLORMOD_GRASSTONED270:
                     case COLORMOD_FOLIAGETONED270:
                     case COLORMOD_WATERTONED270:
-                        rslt[patchidx] += "@" +  + OBJExport.ROT270;
+                        rslt[patchidx] += "@" + +OBJExport.ROT270;
                         break;
                     case COLORMOD_FLIPHORIZ:
                         rslt[patchidx] += "@" + OBJExport.HFLIP;
@@ -3528,17 +3509,15 @@ public class TexturePack {
         }
         return rslt;
     }
-    
+
     // Get biome-specific color multpliers
     private int getBiomeTonedColor(LoadedImage tonemap, int defcolormult, BiomeMap biome, DynmapBlockState blk) {
         int mult;
         if (tonemap == null) { // No map? just use trivial
             mult = defcolormult;
-        }
-        else if (tonemap.argb == null) {    // No details, use trivial
+        } else if (tonemap.argb == null) {    // No details, use trivial
             mult = tonemap.trivial_color;
-        }
-        else {
+        } else {
             mult = tonemap.argb[biome.biomeLookup()];
         }
         Integer idx = this.blockColoring.getBlkStateValue(blk);
@@ -3550,7 +3529,7 @@ public class TexturePack {
         }
         return mult;
     }
-    
+
     public MaterialType getMaterialTypeByTile(int tileidx) {
         return materialbytileid.get(tileidx);
     }
@@ -3561,9 +3540,8 @@ public class TexturePack {
         id = matid;
         String[] tok = id.split("/");
         if (tok.length < 5) {
-            id = tok[tok.length-1];
-        }
-        else {
+            id = tok[tok.length - 1];
+        } else {
             id = tok[4];
             for (int i = 5; i < tok.length; i++) {
                 id = id + "_" + tok[i];
@@ -3577,20 +3555,19 @@ public class TexturePack {
         int cnt = 2;
         String baseid = id;
         while (true) {
-            Integer v = tileIDByMatID.get(id);   
+            Integer v = tileIDByMatID.get(id);
             if (v == null) {    // Not defined, use ID
                 tileIDByMatID.put(id, tileid);
                 matIDByTileID.put(tileid, id);
                 return;
-            }
-            else if ((v != null) && (v.intValue() == tileid)) {
+            } else if ((v != null) && (v.intValue() == tileid)) {
                 return;
             }
             id = baseid + "_" + cnt;
             cnt++;
         }
     }
-    
+
     private String getMatIDForTileID(int txtid) {
         String id = matIDByTileID.get(txtid);
         if (id == null) {
@@ -3601,34 +3578,34 @@ public class TexturePack {
 
         return id;
     }
-    
+
     public static void tallyMemory(DynmapCommandSender sender) {
-		long packcount = 0;
-		long packbytecount = 0;
-    	for (String packid : packs.keySet()) {
-    		TexturePack p = packs.get(packid);
-    		long scaledcount = 0;
-    		long scaledbytecount = 0;
-    		for (Integer scale : p.scaled_textures.keySet()) {
-    			TexturePack sp = p.scaled_textures.get(scale);
-    			long bytecount = 0;
-    			long imgcount = 0;
-    			for (int i = 0; i < sp.imgs.length; i++) {
-    				if (sp.imgs[i] != null) {
-    					if (sp.imgs[i].argb != null) {
-    						bytecount += sp.imgs[i].argb.length * 4;
-    						imgcount++;
-    					}
-    				}
-    			}
-    			sender.sendMessage("pack: " + packid + ", scale: " + scale + ", imagecount=" + imgcount + ", bytecount=" + bytecount);
-    			scaledcount += imgcount;
-    			scaledbytecount += bytecount;
-    		}
-    		sender.sendMessage("pack: " + packid + ", total: imagecount=" + scaledcount + ", bytecount=" + scaledbytecount);
-			packcount += scaledcount;
-			packbytecount += scaledbytecount;
-    	}
-    	sender.sendMessage("overall total: imagecount=" + packcount + ", bytecount=" + packbytecount + "(" + (packbytecount / 1024.0 / 1024.0) + "Mb)");
+        long packcount = 0;
+        long packbytecount = 0;
+        for (String packid : packs.keySet()) {
+            TexturePack p = packs.get(packid);
+            long scaledcount = 0;
+            long scaledbytecount = 0;
+            for (Integer scale : p.scaled_textures.keySet()) {
+                TexturePack sp = p.scaled_textures.get(scale);
+                long bytecount = 0;
+                long imgcount = 0;
+                for (int i = 0; i < sp.imgs.length; i++) {
+                    if (sp.imgs[i] != null) {
+                        if (sp.imgs[i].argb != null) {
+                            bytecount += sp.imgs[i].argb.length * 4;
+                            imgcount++;
+                        }
+                    }
+                }
+                sender.sendMessage("pack: " + packid + ", scale: " + scale + ", imagecount=" + imgcount + ", bytecount=" + bytecount);
+                scaledcount += imgcount;
+                scaledbytecount += bytecount;
+            }
+            sender.sendMessage("pack: " + packid + ", total: imagecount=" + scaledcount + ", bytecount=" + scaledbytecount);
+            packcount += scaledcount;
+            packbytecount += scaledbytecount;
+        }
+        sender.sendMessage("overall total: imagecount=" + packcount + ", bytecount=" + packbytecount + "(" + (packbytecount / 1024.0 / 1024.0) + "Mb)");
     }
 }

@@ -9,7 +9,7 @@ import org.dynmap.renderer.MapDataContext;
 public class TFMagicLeafColorMultiplier extends CustomColorMultiplier {
     public TFMagicLeafColorMultiplier() {
     }
-    
+
     @Override
     public int getColorMultiplier(MapDataContext ctx) {
         int x = ctx.getX();
@@ -23,10 +23,10 @@ public class TFMagicLeafColorMultiplier extends CustomColorMultiplier {
         fade &= 255;
         float spring = (255 - fade) / 255.0F;
         float fall = fade / 255.0F;
-        int red = (int)(spring * 106.0F + fall * 251.0F);
-        int green = (int)(spring * 156.0F + fall * 108.0F);
-        int blue = (int)(spring * 23.0F + fall * 27.0F);
-        
+        int red = (int) (spring * 106.0F + fall * 251.0F);
+        int green = (int) (spring * 156.0F + fall * 108.0F);
+        int blue = (int) (spring * 23.0F + fall * 27.0F);
+
         return (red << 16) | (green << 8) | blue;
     }
 }

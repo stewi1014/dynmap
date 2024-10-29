@@ -26,7 +26,7 @@ public class BoundInputStream extends InputStream {
 
     @Override
     public int available() throws IOException {
-        return (int)Math.min(base.available(), bound);
+        return (int) Math.min(base.available(), bound);
     }
 
     @Override
@@ -37,7 +37,7 @@ public class BoundInputStream extends InputStream {
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if (bound <= 0) return -1;
-        len = (int)Math.min(bound, len);
+        len = (int) Math.min(bound, len);
         int r = base.read(b, off, len);
         bound -= r;
         return r;

@@ -6,27 +6,27 @@ import java.util.Arrays;
 
 public class BufferOutputStream extends OutputStream {
     private static final int CHUNK_SIZE = 8192;
-    
+
     public byte[] buf;
     public int len;
-    
+
     public BufferOutputStream() {
         len = 0;
         buf = new byte[CHUNK_SIZE];
     }
-    
+
     public void reset() {
         len = 0;
     }
-            
+
     @Override
     public final void write(int v) throws IOException {
-        if (len >= buf.length){
+        if (len >= buf.length) {
             buf = Arrays.copyOf(buf, buf.length + CHUNK_SIZE);
         }
         buf[len++] = (byte) v;
     }
-    
+
     @Override
     public final void write(byte[] b, int off, int wlen) {
         if (wlen > 0) {

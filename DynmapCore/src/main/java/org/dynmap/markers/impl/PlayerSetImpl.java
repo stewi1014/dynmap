@@ -1,35 +1,30 @@
 package org.dynmap.markers.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.dynmap.ConfigurationNode;
 import org.dynmap.markers.PlayerSet;
 import org.dynmap.markers.impl.MarkerAPIImpl.MarkerUpdate;
+
+import java.util.*;
 
 class PlayerSetImpl implements PlayerSet {
     private String setid;
     private HashSet<String> players;
     private boolean symmetric;
     private boolean ispersistent;
-    
+
     PlayerSetImpl(String id) {
         setid = id;
         players = new HashSet<String>();
         symmetric = true;
     }
-    
+
     PlayerSetImpl(String id, boolean symmetric, Set<String> players, boolean persistent) {
         setid = id;
         this.symmetric = symmetric;
         this.players = new HashSet<String>(players);
         ispersistent = persistent;
     }
-    
+
     void cleanup() {
         players.clear();
     }
@@ -47,17 +42,18 @@ class PlayerSetImpl implements PlayerSet {
     @Override
     public void deleteSet() {
         MarkerAPIImpl.removePlayerSet(this);    /* Remove from top level sets (notification from there) */
-        if(ispersistent)
+        if (ispersistent)
             MarkerAPIImpl.saveMarkers();
         cleanup();
     }
-    
+
     /**
      * Get configuration node to be saved
+     *
      * @return node
      */
     Map<String, Object> getPersistentData() {
-        if(!ispersistent)   /* Nothing if not persistent */
+        if (!ispersistent)   /* Nothing if not persistent */
             return null;
         /* Make top level node */
         HashMap<String, Object> setnode = new HashMap<String, Object>();
@@ -68,32 +64,35 @@ class PlayerSetImpl implements PlayerSet {
     }
 
     /**
-     *  Load marker from configuration node
-     *  @param node - configuration node
+     * Load marker from configuration node
+     *
+     * @param node - configuration node
      */
     boolean loadPersistentData(ConfigurationNode node, boolean isSafe) {
         List<String> plist = node.getList("players");
-        if(plist != null) {
+        if (plist != null) {
             players.clear();
-            for(String id : plist) {
+            for (String id : plist) {
                 players.add(id.toLowerCase());
             }
         }
         symmetric = node.getBoolean("symmetric", true);
-        
+
         ispersistent = true;
-        
+
         return true;
     }
+
     @Override
     public void setSymmetricSet(boolean symmetric) {
-        if(this.symmetric != symmetric) {
+        if (this.symmetric != symmetric) {
             this.symmetric = symmetric;
             MarkerAPIImpl.playerSetUpdated(this, MarkerUpdate.UPDATED);
-            if(ispersistent)
+            if (ispersistent)
                 MarkerAPIImpl.saveMarkers();
         }
     }
+
     @Override
     public boolean isSymmetricSet() {
         return symmetric;
@@ -106,41 +105,41 @@ class PlayerSetImpl implements PlayerSet {
 
     @Override
     public void setPlayers(Set<String> players) {
-        if(players.size() == this.players.size()) {
+        if (players.size() == this.players.size()) {
             boolean match = true;
-            for(String s : players) {
-                if(this.players.contains(s.toLowerCase()) == false) {
+            for (String s : players) {
+                if (this.players.contains(s.toLowerCase()) == false) {
                     match = false;
                     break;
                 }
             }
-            if(match)
+            if (match)
                 return;
         }
         this.players.clear();
-        for(String id : players) {
+        for (String id : players) {
             this.players.add(id.toLowerCase());
         }
         MarkerAPIImpl.playerSetUpdated(this, MarkerUpdate.UPDATED);
-        if(ispersistent)
+        if (ispersistent)
             MarkerAPIImpl.saveMarkers();
     }
 
     @Override
     public void addPlayer(String player) {
         player = player.toLowerCase();
-        if(!players.add(player)) return;
+        if (!players.add(player)) return;
         MarkerAPIImpl.playerSetUpdated(this, MarkerUpdate.UPDATED);
-        if(ispersistent)
+        if (ispersistent)
             MarkerAPIImpl.saveMarkers();
     }
 
     @Override
     public void removePlayer(String player) {
         player = player.toLowerCase();
-        if(!players.remove(player)) return;
+        if (!players.remove(player)) return;
         MarkerAPIImpl.playerSetUpdated(this, MarkerUpdate.UPDATED);
-        if(ispersistent)
+        if (ispersistent)
             MarkerAPIImpl.saveMarkers();
     }
 

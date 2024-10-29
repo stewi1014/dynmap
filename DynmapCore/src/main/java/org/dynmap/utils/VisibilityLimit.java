@@ -4,6 +4,7 @@ public interface VisibilityLimit {
     /**
      * Test if chunk intersects with visibility limit.
      * Coordinates are chunk coordinates.
+     *
      * @param chunk_x - x-coordinate of chunk
      * @param chunk_z - z-coordinate of chunk
      * @return true if chunk intersects visibility limit, false if not

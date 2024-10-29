@@ -1,6 +1,6 @@
 package org.dynmap.fabric_1_21_1;
 
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.world.ServerChunkLoadingManager;
 import net.minecraft.server.world.ServerChunkManager;
 import net.minecraft.server.world.ServerWorld;
@@ -10,14 +10,13 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeEffects;
 import net.minecraft.world.chunk.ChunkManager;
-
 import org.dynmap.DynmapChunk;
 import org.dynmap.Log;
 import org.dynmap.common.BiomeMap;
 import org.dynmap.common.chunk.GenericChunk;
 import org.dynmap.common.chunk.GenericMapChunkCache;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * Container for managing chunks - dependent upon using chunk snapshots, since rendering is off server thread
@@ -30,7 +29,7 @@ public class FabricMapChunkCache extends GenericMapChunkCache {
      * Construct empty cache
      */
     public FabricMapChunkCache(DynmapPlugin plugin) {
-    	super(plugin.sscache);
+        super(plugin.sscache);
     }
 
     public void setChunks(FabricWorld dw, List<DynmapChunk> chunks) {
@@ -44,13 +43,13 @@ public class FabricMapChunkCache extends GenericMapChunkCache {
             } else {
                 Log.severe("Error: world " + dw.getName() + " has unsupported chunk provider");
             }
-        } 
+        }
         super.setChunks(dw, chunks);
     }
 
-	// Load generic chunk from existing and already loaded chunk
-	protected GenericChunk getLoadedChunk(DynmapChunk chunk) {
-		GenericChunk gc = null;
+    // Load generic chunk from existing and already loaded chunk
+    protected GenericChunk getLoadedChunk(DynmapChunk chunk) {
+        GenericChunk gc = null;
         if (cps.isChunkLoaded(chunk.x, chunk.z)) {
             NbtCompound nbt = null;
             try {
@@ -60,11 +59,11 @@ public class FabricMapChunkCache extends GenericMapChunkCache {
                 Log.severe("ChunkSerializer.serialize threw a NullPointerException", e);
             }
             if (nbt != null) {
-            	gc = parseChunkFromNBT(new NBT.NBTCompound(nbt));
+                gc = parseChunkFromNBT(new NBT.NBTCompound(nbt));
             }
-		}
-		return gc;
-	}
+        }
+        return gc;
+    }
 
     private NbtCompound readChunk(int x, int z) {
         try {
@@ -79,16 +78,16 @@ public class FabricMapChunkCache extends GenericMapChunkCache {
         }
     }
 
-	// Load generic chunk from unloaded chunk
-	protected GenericChunk loadChunk(DynmapChunk chunk) {
-		GenericChunk gc = null;
+    // Load generic chunk from unloaded chunk
+    protected GenericChunk loadChunk(DynmapChunk chunk) {
+        GenericChunk gc = null;
         NbtCompound nbt = readChunk(chunk.x, chunk.z);
-		// If read was good
-		if (nbt != null) {
-			gc = parseChunkFromNBT(new NBT.NBTCompound(nbt));
-		}
-		return gc;
-	}
+        // If read was good
+        if (nbt != null) {
+            gc = parseChunkFromNBT(new NBT.NBTCompound(nbt));
+        }
+        return gc;
+    }
 
     @Override
     public int getFoliageColor(BiomeMap bm, int[] colormap, int x, int z) {

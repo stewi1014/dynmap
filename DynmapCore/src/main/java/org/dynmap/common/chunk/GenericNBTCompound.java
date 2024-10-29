@@ -20,22 +20,40 @@ public interface GenericNBTCompound {
     public final byte TAG_ANY_NUMERIC = 99;
 
     public Set<String> getAllKeys();
+
     public boolean contains(String s);
+
     public boolean contains(String s, int i);
+
     public byte getByte(String s);
+
     public short getShort(String s);
+
     public int getInt(String s);
+
     public long getLong(String s);
+
     public float getFloat(String s);
+
     public double getDouble(String s);
+
     public String getString(String s);
+
     public byte[] getByteArray(String s);
+
     public int[] getIntArray(String s);
+
     public long[] getLongArray(String s);
+
     public GenericNBTCompound getCompound(String s);
+
     public GenericNBTList getList(String s, int i);
+
     public boolean getBoolean(String s);
-    public String getAsString(String s); /// get(s).getAsString()
+
+    public String getAsString(String s);
+
+    /// get(s).getAsString()
     // Factory for bit storage
     public GenericBitStorage makeBitStorage(int bits, int count, long[] data);
 }

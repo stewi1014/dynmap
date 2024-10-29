@@ -8,10 +8,9 @@ import com.mojang.brigadier.tree.ArgumentCommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.mojang.brigadier.tree.RootCommandNode;
 import net.minecraft.server.command.ServerCommandSource;
+import org.dynmap.fabric_1_21_1.DynmapPlugin;
 
 import java.util.Arrays;
-
-import org.dynmap.fabric_1_21_1.DynmapPlugin;
 
 import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static net.minecraft.server.command.CommandManager.argument;

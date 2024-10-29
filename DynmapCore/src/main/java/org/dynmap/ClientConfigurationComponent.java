@@ -1,9 +1,10 @@
 package org.dynmap;
 
-import static org.dynmap.JSONUtils.a;
-import static org.dynmap.JSONUtils.s;
 import org.dynmap.Event.Listener;
 import org.json.simple.JSONObject;
+
+import static org.dynmap.JSONUtils.a;
+import static org.dynmap.JSONUtils.s;
 
 public class ClientConfigurationComponent extends Component {
     public ClientConfigurationComponent(final DynmapCore core, ConfigurationNode configuration) {
@@ -28,7 +29,7 @@ public class ClientConfigurationComponent extends Component {
                 s(t, "grayplayerswhenhidden", c.getBoolean("grayplayerswhenhidden", true));
                 s(t, "login-enabled", core.isLoginSupportEnabled());
                 String sn = core.getServer().getServerName();
-                if(sn.equals("Unknown Server"))
+                if (sn.equals("Unknown Server"))
                     sn = "Minecraft Dynamic Map";
                 s(t, "title", c.getString("webpage-title", sn));
                 s(t, "msg-maptypes", c.getString("msg/maptypes", "Map Types"));
@@ -38,11 +39,11 @@ public class ClientConfigurationComponent extends Component {
                 s(t, "msg-hiddennamejoin", c.getString("msg/hiddennamejoin", "Player joined"));
                 s(t, "msg-hiddennamequit", c.getString("msg/hiddennamequit", "Player quit"));
                 s(t, "maxcount", core.getMaxPlayers());
-                
+
                 DynmapWorld defaultWorld = null;
                 String defmap = null;
                 a(t, "worlds", null);
-                for(DynmapWorld world : core.mapManager.getWorlds()) {
+                for (DynmapWorld world : core.mapManager.getWorlds()) {
                     if (world.maps.size() == 0) continue;
                     if (defaultWorld == null) defaultWorld = world;
                     JSONObject wo = new JSONObject();
@@ -57,20 +58,20 @@ public class ClientConfigurationComponent extends Component {
                     s(wo, "sealevel", world.sealevel);
                     s(wo, "worldheight", world.worldheight);
                     a(t, "worlds", wo);
-                    
-                    for(MapType mt : world.maps) {
+
+                    for (MapType mt : world.maps) {
                         mt.buildClientConfiguration(wo, world);
-                        if(defmap == null) defmap = mt.getName();
+                        if (defmap == null) defmap = mt.getName();
                     }
                 }
                 s(t, "defaultworld", c.getString("defaultworld", defaultWorld == null ? "world" : defaultWorld.getName()));
                 s(t, "defaultmap", c.getString("defaultmap", defmap == null ? "surface" : defmap));
-                if(c.getString("followmap", null) != null)
+                if (c.getString("followmap", null) != null)
                     s(t, "followmap", c.getString("followmap"));
-                if(c.getInteger("followzoom",-1) >= 0)
+                if (c.getInteger("followzoom", -1) >= 0)
                     s(t, "followzoom", c.getInteger("followzoom", 0));
             }
         });
     }
-    
+
 }

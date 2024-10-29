@@ -1,19 +1,19 @@
 package org.dynmap.modsupport;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.LinkedHashMap;
-
 import org.dynmap.Log;
 import org.dynmap.modsupport.impl.ModModelDefinitionImpl;
 import org.dynmap.modsupport.impl.ModTextureDefinitionImpl;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.LinkedHashMap;
 
 /**
  * Implementation of ModSupportAPI
  */
 public class ModSupportImpl extends ModSupportAPI {
     private LinkedHashMap<String, ModTextureDefinitionImpl> txtDefsByModID = new LinkedHashMap<String, ModTextureDefinitionImpl>();
-    
+
     /**
      * Initialize mod support API
      */
@@ -22,12 +22,13 @@ public class ModSupportImpl extends ModSupportAPI {
             return;
         // Initialize API object
         ModSupportAPI.api = new ModSupportImpl();
-        
+
         Log.info("Mod Support API available");
     }
-    
+
     /**
      * Complete processing of mod support
+     *
      * @param datadir - Dynmap data directory
      */
     public static void complete(File datadir) {
@@ -64,23 +65,23 @@ public class ModSupportImpl extends ModSupportAPI {
                         Log.warning("Error creating model definition for mod " + mdi.getModID() + " version " + mdi.getModVersion());
                     }
                 }
-            }
-            else {
+            } else {
                 Log.warning("Unpublished mod support from mod " + tdi.getModID() + " version " + tdi.getModVersion() + " skipped");
             }
         }
         Log.info("Mod Support processing completed");
     }
-    
+
     /**
      * Get texture definition object for calling mod
-     * @param modid - Mod ID
+     *
+     * @param modid  - Mod ID
      * @param modver - Mod version
      * @return texture definition to be populated for the mod
      */
     @Override
     public ModTextureDefinition getModTextureDefinition(String modid,
-            String modver) {
+                                                        String modver) {
         ModTextureDefinitionImpl mtd = txtDefsByModID.get(modid);
         if (mtd == null) {
             mtd = new ModTextureDefinitionImpl(modid, modver);

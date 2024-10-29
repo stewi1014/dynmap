@@ -5,7 +5,6 @@ import org.dynmap.DynmapCore;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 
 public class FileNameFilter implements Filter {
@@ -14,12 +13,13 @@ public class FileNameFilter implements Filter {
     }
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException { }
+    public void init(FilterConfig filterConfig) throws ServletException {
+    }
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-    	String path = ((HttpServletRequest)request).getRequestURL().toString();
-    	HttpServletResponse resp = (HttpServletResponse)response;
+        String path = ((HttpServletRequest) request).getRequestURL().toString();
+        HttpServletResponse resp = (HttpServletResponse) response;
         // Filter unneeded file requests
         if (path.toLowerCase().endsWith(".php")) {
             resp.sendError(404);
@@ -29,5 +29,6 @@ public class FileNameFilter implements Filter {
     }
 
     @Override
-    public void destroy() { }
+    public void destroy() {
+    }
 }

@@ -1,8 +1,8 @@
 package org.dynmap.modsupport.impl;
 
-import java.util.Locale;
-
 import org.dynmap.modsupport.BoxBlockModel;
+
+import java.util.Locale;
 
 public class BoxBlockModelImpl extends BlockModelImpl implements BoxBlockModel {
     private double xmin = 0.0;
@@ -11,11 +11,12 @@ public class BoxBlockModelImpl extends BlockModelImpl implements BoxBlockModel {
     private double ymax = 1.0;
     private double zmin = 0.0;
     private double zmax = 1.0;
-    
+
     @Deprecated
     public BoxBlockModelImpl(int blkid, ModModelDefinitionImpl mdf) {
         super(blkid, mdf);
     }
+
     public BoxBlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         super(blkname, mdf);
     }

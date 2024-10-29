@@ -1,16 +1,12 @@
 package org.dynmap.hdmap.renderer;
 
-import java.util.BitSet;
-import java.util.Map;
-
 import org.dynmap.hdmap.HDBlockStateTextureMap;
 import org.dynmap.hdmap.TexturePack.BlockTransparency;
-import org.dynmap.renderer.CustomRenderer;
-import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.renderer.MapDataContext;
-import org.dynmap.renderer.RenderPatch;
-import org.dynmap.renderer.RenderPatchFactory;
+import org.dynmap.renderer.*;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
+
+import java.util.BitSet;
+import java.util.Map;
 
 /*
  * Glass pane / iron fence renderer
@@ -23,13 +19,13 @@ public class PaneRenderer extends CustomRenderer {
     protected static final int SIDE_XN = 0x1;
     protected static final int SIDE_ZP = 0x8;
     protected static final int SIDE_ZN = 0x2;
-    
+
     // Meshes, indexed by connection combination (bit 0=X-, bit 1=Z-, bit 2=X+, bit 3=Z+)
     protected RenderPatch[][] meshes = new RenderPatch[16][];
-    
+
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         buildPatches(rpf);
         return true;
@@ -57,28 +53,29 @@ public class PaneRenderer extends CustomRenderer {
         RenderPatch HorizY100ZTopStripTop_180 = rpf.getRotatedPatch(HorizY100ZTopStripTop, 0, 180, 0, TEXTURE_EDGE);
         RenderPatch HorizY100ZTopStripTop_270 = rpf.getRotatedPatch(HorizY100ZTopStripTop, 0, 270, 0, TEXTURE_EDGE);
 
-        meshes[0] = new RenderPatch[] { VertX05Strip, VertX05Strip_90, VertX05Strip_180, VertX05Strip_270 };
-        meshes[1] = new RenderPatch[] { VertX05Left_90, HorizY100ZTopStripTop_90, VertX05Strip };
-        meshes[2] = new RenderPatch[] { VertX05Left_180, HorizY100ZTopStripTop_180, VertX05Strip_90 };
-        meshes[3] = new RenderPatch[] { VertX05Left_90, HorizY100ZTopStripTop_90, VertX05Left_180, HorizY100ZTopStripTop_180 };
-        meshes[4] = new RenderPatch[] { VertX05Left_270, HorizY100ZTopStripTop_270, VertX05Strip_180 };
-        meshes[5] = new RenderPatch[] { VertX05_90, HorizY100ZTopStrip_90 };
-        meshes[6] = new RenderPatch[] { VertX05Left_180, HorizY100ZTopStripTop_180, VertX05Left_270, HorizY100ZTopStripTop_270 };
-        meshes[7] = new RenderPatch[] { VertX05_90, HorizY100ZTopStrip_90, VertX05Left_180, HorizY100ZTopStripTop_180 };
-        meshes[8] = new RenderPatch[] { VertX05Left, HorizY100ZTopStripTop, VertX05Strip_270 };
-        meshes[9] = new RenderPatch[] { VertX05Left, HorizY100ZTopStripTop, VertX05Left_90, HorizY100ZTopStripTop_90 };
-        meshes[10] = new RenderPatch[] { VertX05, HorizY100ZTopStrip };
-        meshes[11] = new RenderPatch[] { VertX05, HorizY100ZTopStrip, VertX05Left_90, HorizY100ZTopStripTop_90 };
-        meshes[12] = new RenderPatch[] { VertX05Left_270, HorizY100ZTopStripTop_270, VertX05Left, HorizY100ZTopStripTop };
-        meshes[13] = new RenderPatch[] { VertX05_270, HorizY100ZTopStrip_270, VertX05Left, HorizY100ZTopStripTop };
-        meshes[14] = new RenderPatch[] { VertX05_180, HorizY100ZTopStrip_180, VertX05Left_270, HorizY100ZTopStripTop_270 };
-        meshes[15] = new RenderPatch[] { VertX05, VertX05_90, HorizY100ZTopStrip, HorizY100ZTopStrip_90 };
+        meshes[0] = new RenderPatch[]{VertX05Strip, VertX05Strip_90, VertX05Strip_180, VertX05Strip_270};
+        meshes[1] = new RenderPatch[]{VertX05Left_90, HorizY100ZTopStripTop_90, VertX05Strip};
+        meshes[2] = new RenderPatch[]{VertX05Left_180, HorizY100ZTopStripTop_180, VertX05Strip_90};
+        meshes[3] = new RenderPatch[]{VertX05Left_90, HorizY100ZTopStripTop_90, VertX05Left_180, HorizY100ZTopStripTop_180};
+        meshes[4] = new RenderPatch[]{VertX05Left_270, HorizY100ZTopStripTop_270, VertX05Strip_180};
+        meshes[5] = new RenderPatch[]{VertX05_90, HorizY100ZTopStrip_90};
+        meshes[6] = new RenderPatch[]{VertX05Left_180, HorizY100ZTopStripTop_180, VertX05Left_270, HorizY100ZTopStripTop_270};
+        meshes[7] = new RenderPatch[]{VertX05_90, HorizY100ZTopStrip_90, VertX05Left_180, HorizY100ZTopStripTop_180};
+        meshes[8] = new RenderPatch[]{VertX05Left, HorizY100ZTopStripTop, VertX05Strip_270};
+        meshes[9] = new RenderPatch[]{VertX05Left, HorizY100ZTopStripTop, VertX05Left_90, HorizY100ZTopStripTop_90};
+        meshes[10] = new RenderPatch[]{VertX05, HorizY100ZTopStrip};
+        meshes[11] = new RenderPatch[]{VertX05, HorizY100ZTopStrip, VertX05Left_90, HorizY100ZTopStripTop_90};
+        meshes[12] = new RenderPatch[]{VertX05Left_270, HorizY100ZTopStripTop_270, VertX05Left, HorizY100ZTopStripTop};
+        meshes[13] = new RenderPatch[]{VertX05_270, HorizY100ZTopStrip_270, VertX05Left, HorizY100ZTopStripTop};
+        meshes[14] = new RenderPatch[]{VertX05_180, HorizY100ZTopStrip_180, VertX05Left_270, HorizY100ZTopStripTop_270};
+        meshes[15] = new RenderPatch[]{VertX05, VertX05_90, HorizY100ZTopStrip, HorizY100ZTopStrip_90};
     }
+
     @Override
     public int getMaximumTextureCount() {
         return 2;
     }
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         /* Build connection map - check each axis */
@@ -86,25 +83,25 @@ public class PaneRenderer extends CustomRenderer {
         DynmapBlockState t;
         DynmapBlockState type = ctx.getBlockType();
         /* Check north */
-        t = ctx.getBlockTypeAt(-1,  0,  0);
+        t = ctx.getBlockTypeAt(-1, 0, 0);
         if ((t == type) || t.is(DynmapBlockState.GLASS_BLOCK) || (HDBlockStateTextureMap.getTransparency(t) == BlockTransparency.OPAQUE)) {
             blockdata |= SIDE_XN;
         }
         /* Look east */
-        t = ctx.getBlockTypeAt(0,  0,  -1);
+        t = ctx.getBlockTypeAt(0, 0, -1);
         if ((t == type) || t.is(DynmapBlockState.GLASS_BLOCK) || (HDBlockStateTextureMap.getTransparency(t) == BlockTransparency.OPAQUE)) {
             blockdata |= SIDE_ZN;
         }
         /* Look south */
-        t = ctx.getBlockTypeAt(1,  0,  0);
+        t = ctx.getBlockTypeAt(1, 0, 0);
         if ((t == type) || t.is(DynmapBlockState.GLASS_BLOCK) || (HDBlockStateTextureMap.getTransparency(t) == BlockTransparency.OPAQUE)) {
             blockdata |= SIDE_XP;
         }
         /* Look west */
-        t = ctx.getBlockTypeAt(0,  0,  1);
+        t = ctx.getBlockTypeAt(0, 0, 1);
         if ((t == type) || t.is(DynmapBlockState.GLASS_BLOCK) || (HDBlockStateTextureMap.getTransparency(t) == BlockTransparency.OPAQUE)) {
             blockdata |= SIDE_ZP;
         }
         return meshes[blockdata];
-    }    
+    }
 }

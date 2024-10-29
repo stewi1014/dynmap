@@ -1,15 +1,11 @@
 package org.dynmap.hdmap.renderer;
 
+import org.dynmap.renderer.*;
+
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
-
-import org.dynmap.renderer.CustomRenderer;
-import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.renderer.MapDataContext;
-import org.dynmap.renderer.RenderPatch;
-import org.dynmap.renderer.RenderPatchFactory;
 
 public class TFCSupportRenderer extends CustomRenderer {
     private boolean isVert;
@@ -26,7 +22,7 @@ public class TFCSupportRenderer extends CustomRenderer {
 
     // Meshes, indexed by connection combination (bit 0=X+, bit 1=X-, bit 2=Z+, bit 3=Z-, bit 4=Y-)
     private RenderPatch[][] meshes = new RenderPatch[32][];
-    
+
     private void setID(BitSet set, String bname) {
         DynmapBlockState bbs = DynmapBlockState.getBaseStateByName(bname);
         if (bbs.isNotAir()) {
@@ -35,21 +31,21 @@ public class TFCSupportRenderer extends CustomRenderer {
             }
         }
     }
+
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         String vert = custparm.get("vert");
-        if((vert != null) && (vert.equals("true"))) {
+        if ((vert != null) && (vert.equals("true"))) {
             isVert = true;
             setID(vertid, blkname);
-        }
-        else {
+        } else {
             setID(horizid, blkname);
         }
         /* Generate meshes */
         buildMeshes(rpf);
-        
+
         return true;
     }
 
@@ -57,17 +53,17 @@ public class TFCSupportRenderer extends CustomRenderer {
     public int getMaximumTextureCount() {
         return 1;
     }
-    
-    private static final int[] patchlist = { 0, 0, 0, 0, 0, 0 };
 
-    private void addBox(RenderPatchFactory rpf, List<RenderPatch> list, double xmin, double xmax, double ymin, double ymax, double zmin, double zmax)  {
+    private static final int[] patchlist = {0, 0, 0, 0, 0, 0};
+
+    private void addBox(RenderPatchFactory rpf, List<RenderPatch> list, double xmin, double xmax, double ymin, double ymax, double zmin, double zmax) {
         addBox(rpf, list, xmin, xmax, ymin, ymax, zmin, zmax, patchlist);
     }
 
     private void buildMeshes(RenderPatchFactory rpf) {
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
-        for(int dat = 0; dat < 32; dat++) {
-            switch(dat & SIDE_X) {
+        for (int dat = 0; dat < 32; dat++) {
+            switch (dat & SIDE_X) {
                 case SIDE_XP: // Just X+
                     addBox(rpf, list, 0.75, 1.0, 0.5, 1.0, 0.25, 0.75);
                     break;
@@ -78,7 +74,7 @@ public class TFCSupportRenderer extends CustomRenderer {
                     addBox(rpf, list, 0.0, 1.0, 0.5, 1.0, 0.25, 0.75);
                     break;
             }
-            switch(dat & SIDE_Z) {
+            switch (dat & SIDE_Z) {
                 case SIDE_ZP: // Just Z+
                     addBox(rpf, list, 0.25, 0.75, 0.5, 1.0, 0.75, 1.0);
                     break;
@@ -90,10 +86,9 @@ public class TFCSupportRenderer extends CustomRenderer {
                     break;
             }
             /* Always have post on vertical */
-            if(isVert || ((dat & SIDE_YN) != 0)) {
+            if (isVert || ((dat & SIDE_YN) != 0)) {
                 addBox(rpf, list, 0.25, 0.75, 0.0, 1.0, 0.25, 0.75);
-            }
-            else {
+            } else {
                 addBox(rpf, list, 0.25, 0.75, 0.5, 1.0, 0.25, 0.75);
             }
             meshes[dat] = list.toArray(new RenderPatch[list.size()]);
@@ -102,12 +97,12 @@ public class TFCSupportRenderer extends CustomRenderer {
     }
 
     private static int[][] sides = {
-        { 1, 0, 0, SIDE_XP },
-        { -1, 0, 0, SIDE_XN },
-        { 0, 0, 1, SIDE_ZP },
-        { 0, 0, -1, SIDE_ZN }
+            {1, 0, 0, SIDE_XP},
+            {-1, 0, 0, SIDE_XN},
+            {0, 0, 1, SIDE_ZP},
+            {0, 0, -1, SIDE_ZN}
     };
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         /* Build connection map - check each axis */
@@ -126,5 +121,5 @@ public class TFCSupportRenderer extends CustomRenderer {
             }
         }
         return meshes[connect];
-    }    
+    }
 }

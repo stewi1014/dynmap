@@ -8,16 +8,14 @@ public class RectangleVisibilityLimit implements VisibilityLimit {
         if (x1 >= x0) {
             x_min = x0;
             x_max = x1;
-        }
-        else {
+        } else {
             x_min = x1;
             x_max = x0;
         }
         if (z1 >= z0) {
             z_min = z0;
             z_max = z1;
-        }
-        else {
+        } else {
             z_min = z1;
             z_max = z0;
         }

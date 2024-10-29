@@ -24,10 +24,12 @@ public enum DynmapChatColor {
     private DynmapChatColor(final int code) {
         this.str = String.format("\u00A7%x", code);
     }
+
     @Override
     public String toString() {
         return str;
     }
+
     public static String stripColor(final String input) {
         if (input == null) {
             return null;

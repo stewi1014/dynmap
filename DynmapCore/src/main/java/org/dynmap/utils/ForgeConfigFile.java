@@ -1,10 +1,6 @@
 package org.dynmap.utils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,20 +13,20 @@ public class ForgeConfigFile {
     public ForgeConfigFile(File cfgfile) {
         cfg = cfgfile;
     }
-    
+
     public boolean load() {
         settings.clear();
         FileInputStream fis = null;
         BufferedReader rdr = null;
         boolean rslt = true;
-        
+
         try {
             fis = new FileInputStream(cfg);
             rdr = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
             String line;
             ArrayList<String> section = new ArrayList<String>();
             String tok = "";
-            while((line = rdr.readLine()) != null) {
+            while ((line = rdr.readLine()) != null) {
                 boolean skip = false;
                 boolean instr = false;
                 boolean intok = false;
@@ -38,57 +34,50 @@ public class ForgeConfigFile {
                 char last_c = ' ';
                 int off = line.indexOf(": ");   // If "tok: value style (Minegicka), fix to look normal
                 if (off > 0) {
-                    line = line.substring(0, off).replace(' ', '_') + "=" + line.substring(off+1);
+                    line = line.substring(0, off).replace(' ', '_') + "=" + line.substring(off + 1);
                 }
                 for (int i = 0; i < line.length() && !skip; ++i) {
                     char c = line.charAt(i);
-                    if(instr) {
-                        if(c != '"') {
+                    if (instr) {
+                        if (c != '"') {
                             tok += c;
-                        }
-                        else if (last_c == '"') {
+                        } else if (last_c == '"') {
                             // Ignore double double-quotes
-                        }
-                        else {
+                        } else {
                             instr = false;
                             intok = false;
                         }
-                    }
-                    else if(c == '"') {
-                        if (last_c != '"')  {
+                    } else if (c == '"') {
+                        if (last_c != '"') {
                             intok = instr = true;
                         }
-                    }
-                    else if(Character.isLetterOrDigit(c) || ALLOWED_CHARS.indexOf(c) != -1) {
-                        if(intok) {
+                    } else if (Character.isLetterOrDigit(c) || ALLOWED_CHARS.indexOf(c) != -1) {
+                        if (intok) {
                             tok += c;
-                        }
-                        else {
+                        } else {
                             tok = "" + c;
                             intok = true;
                         }
-                    }
-                    else if (Character.isWhitespace(c)) {
-                        if((!instr) && intok) {
+                    } else if (Character.isWhitespace(c)) {
+                        if ((!instr) && intok) {
                             intok = false;
                         }
-                    }
-                    else {
+                    } else {
                         switch (line.charAt(i)) {
                             case '#':
                                 skip = true;
                                 instr = intok = false;
                                 break;
                             case '{':
-                                if(tok.equals("") == false) {
+                                if (tok.equals("") == false) {
                                     section.add(tok);
                                     tok = "";
                                     instr = intok = false;
                                 }
                                 break;
                             case '}':
-                                if(section.size() > 0) {
-                                    section.remove(section.size()-1);
+                                if (section.size() > 0) {
+                                    section.remove(section.size() - 1);
                                 }
                                 break;
                             case '=':
@@ -96,10 +85,10 @@ public class ForgeConfigFile {
                                 String propertyName = tok;
                                 tok = "";
                                 off = propertyName.indexOf(':');
-                                if(off >= 0) {  /* Trim off the Forge 6.4.1+ type prefix */
-                                    propertyName = propertyName.substring(off+1);
+                                if (off >= 0) {  /* Trim off the Forge 6.4.1+ type prefix */
+                                    propertyName = propertyName.substring(off + 1);
                                 }
-                                for(int j = section.size()-1; j >= 0; j--) {
+                                for (int j = section.size() - 1; j >= 0; j--) {
                                     propertyName = section.get(j) + "/" + propertyName;
                                 }
                                 propertyName = propertyName.replace(' ', '_');
@@ -114,14 +103,17 @@ public class ForgeConfigFile {
         } catch (IOException iox) {
             rslt = false;
         } finally {
-            if(fis != null) {
-                try { fis.close(); } catch (IOException iox) {}
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException iox) {
+                }
                 fis = null;
             }
         }
         return rslt;
     }
-    
+
     public int getBlockID(String id) {
         int idval = -1;
         String val = settings.get(id);
@@ -138,24 +130,20 @@ public class ForgeConfigFile {
         }
         return idval;
     }
-    public void addBlockIDs(Map<String,Integer> map) {
-        for(String k : settings.keySet()) {
-            if(k.startsWith("block/")) {
+
+    public void addBlockIDs(Map<String, Integer> map) {
+        for (String k : settings.keySet()) {
+            if (k.startsWith("block/")) {
                 map.put(k.substring("block/".length()), getBlockID(k));
-            }
-            else if(k.startsWith("blocks/")) { /* RP2 */
+            } else if (k.startsWith("blocks/")) { /* RP2 */
                 map.put(k.substring("blocks/".length()), getBlockID(k));
-            }
-            else if(k.startsWith("item/")) {    /* Item codes? */
+            } else if (k.startsWith("item/")) {    /* Item codes? */
                 map.put("item_" + k.substring("item/".length()), getBlockID(k));
-            }
-            else if(k.startsWith("walls/")) {    /* Walls (Fancy Walls) codes? */
+            } else if (k.startsWith("walls/")) {    /* Walls (Fancy Walls) codes? */
                 map.put(k, getBlockID(k));
-            }
-            else if(k.startsWith("world/blocks/")) {    /* XyCraft world/blocks */
+            } else if (k.startsWith("world/blocks/")) {    /* XyCraft world/blocks */
                 map.put(k.substring("world/".length()), getBlockID(k));
-            }
-            else {
+            } else {
                 map.put(k, getBlockID(k));
             }
         }

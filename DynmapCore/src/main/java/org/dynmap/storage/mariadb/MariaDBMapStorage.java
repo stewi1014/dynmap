@@ -17,7 +17,7 @@ public class MariaDBMapStorage extends MySQLMapStorage {
             Class.forName("org.mariadb.jdbc.Driver");
         } catch (ClassNotFoundException cnfx) {
             Log.severe("MariaDB-JDBC classes not found - MariaDB data source not usable");
-            return false; 
+            return false;
         }
         return true;
     }

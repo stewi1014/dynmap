@@ -10,29 +10,29 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.Class;
 
 public class FileResourceHandler extends ResourceHandler {
     private static String getNormalizedPath(String p) {
         p = p.replace('\\', '/');
         String[] tok = p.split("/");
         int i, j;
-        for(i = 0, j = 0; i < tok.length; i++) {
-            if((tok[i] == null) || (tok[i].length() == 0) || (tok[i].equals("."))) {
+        for (i = 0, j = 0; i < tok.length; i++) {
+            if ((tok[i] == null) || (tok[i].length() == 0) || (tok[i].equals("."))) {
                 tok[i] = null;
-            }
-            else if(tok[i].equals("..")) {
-                if(j > 0) { j--; tok[j] = null;  }
+            } else if (tok[i].equals("..")) {
+                if (j > 0) {
+                    j--;
+                    tok[j] = null;
+                }
                 tok[i] = null;
-            }
-            else {
+            } else {
                 tok[j] = tok[i];
                 j++;
             }
         }
         String path = "";
-        for(i = 0; i < j; i++) {
-            if(tok[i] != null) {
+        for (i = 0; i < j; i++) {
+            if (tok[i] != null) {
                 path = path + "/" + tok[i];
             }
         }
@@ -54,20 +54,20 @@ public class FileResourceHandler extends ResourceHandler {
         if (file == null) {
             return;
         }
-    	if(!target.equals(normalizedTarget)){
-    		baseRequest.setURIPathQuery(normalizedTarget);
-    		baseRequest.setPathInfo(normalizedTarget);
-    		try{
-    			Class<?> requestClass = request.getClass();
-    			Field field = requestClass.getDeclaredField("_pathInfo");
-    			field.setAccessible(true);
-    			field.set(request, normalizedTarget);
-    		} catch (Exception ignore) {
-    			//It's unsafe to continue since these lines will be triggered by only malicious requests.
-    			ignore.printStackTrace();
-    			return;
-    		}
-    	}
-    	super.handle(normalizedTarget, baseRequest, request, response);
+        if (!target.equals(normalizedTarget)) {
+            baseRequest.setURIPathQuery(normalizedTarget);
+            baseRequest.setPathInfo(normalizedTarget);
+            try {
+                Class<?> requestClass = request.getClass();
+                Field field = requestClass.getDeclaredField("_pathInfo");
+                field.setAccessible(true);
+                field.set(request, normalizedTarget);
+            } catch (Exception ignore) {
+                //It's unsafe to continue since these lines will be triggered by only malicious requests.
+                ignore.printStackTrace();
+                return;
+            }
+        }
+        super.handle(normalizedTarget, baseRequest, request, response);
     }
 }

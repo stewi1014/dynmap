@@ -8,6 +8,7 @@ public class SignTextureFileImpl extends TextureFileImpl implements SignTextureF
     public SignTextureFileImpl(String id, String filename) {
         super(id, filename, TextureFileType.SIGN, 10, 1);
     }
+
     public String getLine() {
         String s = super.getLine();
         s += ",format=SIGN";

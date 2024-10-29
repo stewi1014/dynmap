@@ -1,23 +1,5 @@
 package org.dynmap.hdmap;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipException;
-import java.util.zip.ZipFile;
-
 import org.dynmap.ConfigurationNode;
 import org.dynmap.DynmapCore;
 import org.dynmap.Log;
@@ -29,11 +11,13 @@ import org.dynmap.renderer.CustomRenderer;
 import org.dynmap.renderer.DynmapBlockState;
 import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
-import org.dynmap.utils.BlockStateParser;
-import org.dynmap.utils.ForgeConfigFile;
-import org.dynmap.utils.PatchDefinition;
-import org.dynmap.utils.PatchDefinitionFactory;
-import org.dynmap.utils.Vector3D;
+import org.dynmap.utils.*;
+
+import java.io.*;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 /**
  * Custom block models - used for non-cube blocks to represent the physical volume associated with the block
@@ -48,23 +32,29 @@ public class HDBlockModels {
     private static HashSet<String> loadedmods = new HashSet<String>();
     private static HashMap<Integer, HDScaledBlockModels> scaled_models_by_scale = new HashMap<Integer, HDScaledBlockModels>();
 
-    public static final int getMaxPatchCount() { return max_patches; }
-    public static final PatchDefinitionFactory getPatchDefinitionFactory() { return pdf; }
+    public static final int getMaxPatchCount() {
+        return max_patches;
+    }
+
+    public static final PatchDefinitionFactory getPatchDefinitionFactory() {
+        return pdf;
+    }
 
     /* Reset model if defined by different block set */
     public static boolean resetIfNotBlockSet(DynmapBlockState blk, String blockset) {
         HDBlockModel bm = models_by_id_data.get(blk.globalStateIndex);
-        if((bm != null) && (bm.getBlockSet().equals(blockset) == false)) {
+        if ((bm != null) && (bm.getBlockSet().equals(blockset) == false)) {
             Debug.debug("Reset block model for " + blk + " from " + bm.getBlockSet() + " due to new def from " + blockset);
             models_by_id_data.remove(blk.globalStateIndex);
             return true;
         }
         return false;
     }
+
     /* Get texture count needed for model */
     public static int getNeededTextureCount(DynmapBlockState blk) {
         HDBlockModel bm = models_by_id_data.get(blk.globalStateIndex);
-        if(bm != null) {
+        if (bm != null) {
             return bm.getTextureCount();
         }
         return 6;
@@ -96,8 +86,7 @@ public class HDBlockModels {
             HDBlockModel m = models_by_id_data.get(fs.globalStateIndex);
             if (m != null) {
                 models_by_id_data.put(tb.globalStateIndex, m);
-            }
-            else {
+            } else {
                 models_by_id_data.remove(tb.globalStateIndex);
             }
             customModelsRequestingTileData.set(tb.globalStateIndex, customModelsRequestingTileData.get(fs.globalStateIndex));
@@ -107,27 +96,30 @@ public class HDBlockModels {
 
     /**
      * Get list of tile entity fields needed for custom renderer at given ID and data value, if any
+     *
      * @param blk - block state
      * @return null if none needed, else list of fields needed
      */
     public static final String[] getTileEntityFieldsNeeded(DynmapBlockState blk) {
         int idx = blk.globalStateIndex;
-        if(customModelsRequestingTileData.get(idx)) {
+        if (customModelsRequestingTileData.get(idx)) {
             HDBlockModel mod = models_by_id_data.get(idx);
-            if(mod instanceof CustomBlockModel) {
-                return ((CustomBlockModel)mod).render.getTileEntityFieldsNeeded();
+            if (mod instanceof CustomBlockModel) {
+                return ((CustomBlockModel) mod).render.getTileEntityFieldsNeeded();
             }
         }
         return null;
     }
+
     /**
-     * Get scaled set of models for all modelled blocks 
+     * Get scaled set of models for all modelled blocks
+     *
      * @param scale - scale
      * @return scaled models
      */
-    public static HDScaledBlockModels   getModelsForScale(int scale) {
+    public static HDScaledBlockModels getModelsForScale(int scale) {
         HDScaledBlockModels model = scaled_models_by_scale.get(Integer.valueOf(scale));
-        if(model == null) {
+        if (model == null) {
             model = new HDScaledBlockModels(scale);
             scaled_models_by_scale.put(scale, model);
         }
@@ -136,30 +128,32 @@ public class HDBlockModels {
 
     private static void addFiles(ArrayList<String> files, File dir, String path) {
         File[] listfiles = dir.listFiles();
-        if(listfiles == null) return;
-        for(File f : listfiles) {
+        if (listfiles == null) return;
+        for (File f : listfiles) {
             String fn = f.getName();
-            if(fn.equals(".") || (fn.equals(".."))) continue;
-            if(f.isFile()) {
-                if(fn.endsWith("-models.txt")) {
+            if (fn.equals(".") || (fn.equals(".."))) continue;
+            if (f.isFile()) {
+                if (fn.endsWith("-models.txt")) {
                     files.add(path + fn);
                 }
-            }
-            else if(f.isDirectory()) {
+            } else if (f.isDirectory()) {
                 addFiles(files, f, path + f.getName() + "/");
             }
         }
     }
+
     public static String getModIDFromFileName(String fn) {
         int off = fn.lastIndexOf('/');
-        if (off > 0) fn = fn.substring(off+1);
+        if (off > 0) fn = fn.substring(off + 1);
         off = fn.lastIndexOf('-');
         if (off > 0) fn = fn.substring(0, off);
         return fn;
     }
+
     /**
-     * Load models 
-     * @param core - core object
+     * Load models
+     *
+     * @param core   - core object
      * @param config - model configuration data
      */
     public static void loadModels(DynmapCore core, ConfigurationNode config) {
@@ -181,11 +175,14 @@ public class HDBlockModels {
         ZipFile zf;
         while (!done) {
             in = TexturePack.class.getResourceAsStream("/models_" + i + ".txt");
-            if(in != null) {
+            if (in != null) {
                 loadModelFile(in, "models_" + i + ".txt", config, core, "core");
-                try { in.close(); } catch (IOException iox) {} in = null;
-            }
-            else {
+                try {
+                    in.close();
+                } catch (IOException iox) {
+                }
+                in = null;
+            } else {
                 done = true;
             }
             i++;
@@ -209,11 +206,17 @@ public class HDBlockModels {
                 } catch (IOException e) {
                 } finally {
                     if (in != null) {
-                        try { in.close(); } catch (IOException e) { }
+                        try {
+                            in.close();
+                        } catch (IOException e) {
+                        }
                         in = null;
                     }
                     if (zf != null) {
-                        try { zf.close(); } catch (IOException e) { }
+                        try {
+                            zf.close();
+                        } catch (IOException e) {
+                        }
                         zf = null;
                     }
                 }
@@ -223,17 +226,20 @@ public class HDBlockModels {
         ArrayList<String> files = new ArrayList<String>();
         File customdir = new File(datadir, "renderdata");
         addFiles(files, customdir, "");
-        for(String fn : files) {
+        for (String fn : files) {
             File custom = new File(customdir, fn);
-            if(custom.canRead()) {
+            if (custom.canRead()) {
                 try {
                     in = new FileInputStream(custom);
                     loadModelFile(in, custom.getPath(), config, core, getModIDFromFileName(fn));
                 } catch (IOException iox) {
                     Log.severe("Error loading " + custom.getPath());
                 } finally {
-                    if(in != null) {
-                        try { in.close(); } catch (IOException iox) {}
+                    if (in != null) {
+                        try {
+                            in.close();
+                        } catch (IOException iox) {
+                        }
                         in = null;
                     }
                 }
@@ -252,53 +258,61 @@ public class HDBlockModels {
                 in = zf.getInputStream(ze);
                 if (in != null) {
                     loadModelFile(in, n, config, core, getModIDFromFileName(n));
-                    try { in.close(); } catch (IOException x) { in = null; }
+                    try {
+                        in.close();
+                    } catch (IOException x) {
+                        in = null;
+                    }
                 }
             }
         } catch (IOException iox) {
             Log.severe("Error processing model files");
         } finally {
             if (in != null) {
-                try { in.close(); } catch (IOException iox) {}
+                try {
+                    in.close();
+                } catch (IOException iox) {
+                }
                 in = null;
             }
             if (zf != null) {
-                try { zf.close(); } catch (IOException iox) {}
+                try {
+                    zf.close();
+                } catch (IOException iox) {
+                }
                 zf = null;
             }
         }
     }
 
-    private static Integer getIntValue(Map<String,Integer> vars, String val) throws NumberFormatException {
+    private static Integer getIntValue(Map<String, Integer> vars, String val) throws NumberFormatException {
         char c = val.charAt(0);
-        if(Character.isLetter(c) || (c == '%') || (c == '&')) {
+        if (Character.isLetter(c) || (c == '%') || (c == '&')) {
             int off = val.indexOf('+');
             int offset = 0;
             if (off > 0) {
-                offset = Integer.valueOf(val.substring(off+1));
-                val = val.substring(0,  off);
+                offset = Integer.valueOf(val.substring(off + 1));
+                val = val.substring(0, off);
             }
             Integer v = vars.get(val);
-            if(v == null) {
+            if (v == null) {
                 if ((c == '%') || (c == '&')) { // block/item unique IDs
                     vars.put(val, 0);
                     v = 0;
-                }
-                else {
+                } else {
                     throw new NumberFormatException("invalid ID - " + val);
                 }
             }
-            if((offset != 0) && (v.intValue() > 0))
+            if ((offset != 0) && (v.intValue() > 0))
                 v = v.intValue() + offset;
             return v;
-        }
-        else {
+        } else {
             return Integer.valueOf(val);
         }
     }
 
     // Patch index ordering, corresponding to BlockStep ordinal order
-    public static final int boxPatchList[] = { 1, 4, 0, 3, 2, 5 };
+    public static final int boxPatchList[] = {1, 4, 0, 3, 2, 5};
 
     private static class BoxLimits {
         double xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = 1.0, zmin = 0.0, zmax = 1.0;
@@ -311,19 +325,24 @@ public class HDBlockModels {
         int textureid;
         double[] uv;
         ModelBlockModel.SideRotation rot;
-    };
+    }
+
+    ;
 
     private static class ModelBox {
         double[] from = new double[3];
         double[] to = new double[3];
         double xrot = 0, yrot = 0, zrot = 0;
         double xrotorig = 8, yrotorig = 8, zrotorig = 8;
-        int modrotx = 0, modroty = 0, modrotz = 0;	// Model level rotation
+        int modrotx = 0, modroty = 0, modrotz = 0;    // Model level rotation
         boolean shade = true;
         ArrayList<ModelBoxSide> sides = new ArrayList<ModelBoxSide>();
-    };
+    }
+
+    ;
 
     private static HashMap<String, BlockSide> toBlockSide = new HashMap<String, BlockSide>();
+
     static {
         toBlockSide.put("u", BlockSide.TOP);
         toBlockSide.put("d", BlockSide.BOTTOM);
@@ -331,10 +350,13 @@ public class HDBlockModels {
         toBlockSide.put("s", BlockSide.SOUTH);
         toBlockSide.put("w", BlockSide.WEST);
         toBlockSide.put("e", BlockSide.EAST);
-    };
+    }
+
+    ;
 
     /**
      * Load models from file
+     *
      * @param core
      */
     private static void loadModelFile(InputStream in, String fname, ConfigurationNode config, DynmapCore core, String blockset) {
@@ -351,7 +373,7 @@ public class HDBlockModels {
             String line;
             ArrayList<HDBlockVolumetricModel> modlist = new ArrayList<HDBlockVolumetricModel>();
             ArrayList<HDBlockPatchModel> pmodlist = new ArrayList<HDBlockPatchModel>();
-            HashMap<String,Integer> varvals = new HashMap<String,Integer>();
+            HashMap<String, Integer> varvals = new HashMap<String, Integer>();
             HashMap<String, PatchDefinition> patchdefs = new HashMap<String, PatchDefinition>();
             pdf.setPatchNameMape(patchdefs);
             int layerbits = 0;
@@ -376,10 +398,10 @@ public class HDBlockModels {
                     if (!HDBlockModels.checkVersionRange(tver, vertst)) {
                         skip = true;
                     }
-                    line = line.substring(end+1);
+                    line = line.substring(end + 1);
                 }
                 // Comment line
-                if(line.startsWith("#") || line.startsWith(";")) {
+                if (line.startsWith("#") || line.startsWith(";")) {
                     skip = true;
                 }
                 // If we're skipping due to version restriction
@@ -389,7 +411,7 @@ public class HDBlockModels {
                 String typeid = "";
                 if (typeend >= 0) {
                     typeid = line.substring(0, typeend);
-                    line = line.substring(typeend+1).trim();
+                    line = line.substring(typeend + 1).trim();
                 }
                 if (typeid.equals("block")) {
                     // Parse block states
@@ -397,10 +419,10 @@ public class HDBlockModels {
 
                     scale = 0;
                     String[] args = line.split(",");
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("scale")) {
+                        if (av.length < 2) continue;
+                        if (av[0].equals("scale")) {
                             scale = Integer.parseInt(av[1]);
                         }
                     }
@@ -412,35 +434,33 @@ public class HDBlockModels {
                             if (bblk.isNotAir()) {
                                 modlist.add(new HDBlockVolumetricModel(bblk, bsprslt.get(bblk), scale, new long[0], blockset));
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid model block name " + bblk.blockName + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
                     layerbits = 0;
-                }
-                else if (typeid.equals("layer")) {
+                } else if (typeid.equals("layer")) {
                     String args[] = line.split(",");
                     layerbits = 0;
                     rownum = 0;
-                    for(String a: args) {
+                    for (String a : args) {
                         layerbits |= (1 << Integer.parseInt(a));
                     }
-                }
-                else if (typeid.equals("rotate")) {
+                } else if (typeid.equals("rotate")) {
                     // Parse block states
                     bsp.processLine(modname, line, lineNum, varvals);
 
                     String args[] = line.split(",");
                     int rot = -1;
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
                         if (av.length < 2) continue;
-                        if (av[0].equals("rot")) { rot = Integer.parseInt(av[1]); }
+                        if (av[0].equals("rot")) {
+                            rot = Integer.parseInt(av[1]);
+                        }
                     }
                     bsprslt = bsp.getMatchingStates();
                     if (bsprslt.size() != 1) {
@@ -457,45 +477,42 @@ public class HDBlockModels {
                     }
                     HDBlockModel mod = models_by_id_data.get(bs.globalStateIndex);
                     if (modlist.isEmpty()) {
-                    }
-                    else if ((mod != null) && ((rot%90) == 0) && (mod instanceof HDBlockVolumetricModel)) {
-                        HDBlockVolumetricModel vmod = (HDBlockVolumetricModel)mod;
-                        for(int x = 0; x < scale; x++) {
-                            for(int y = 0; y < scale; y++) {
-                                for(int z = 0; z < scale; z++) {
-                                    if(vmod.isSubblockSet(x, y, z) == false) continue;
-                                    switch(rot) {
+                    } else if ((mod != null) && ((rot % 90) == 0) && (mod instanceof HDBlockVolumetricModel)) {
+                        HDBlockVolumetricModel vmod = (HDBlockVolumetricModel) mod;
+                        for (int x = 0; x < scale; x++) {
+                            for (int y = 0; y < scale; y++) {
+                                for (int z = 0; z < scale; z++) {
+                                    if (vmod.isSubblockSet(x, y, z) == false) continue;
+                                    switch (rot) {
                                         case 0:
-                                            for(HDBlockVolumetricModel bm : modlist) {
+                                            for (HDBlockVolumetricModel bm : modlist) {
                                                 bm.setSubblock(x, y, z, true);
                                             }
                                             break;
                                         case 90:
-                                            for(HDBlockVolumetricModel bm : modlist) {
-                                                bm.setSubblock(scale-z-1, y, x, true);
+                                            for (HDBlockVolumetricModel bm : modlist) {
+                                                bm.setSubblock(scale - z - 1, y, x, true);
                                             }
                                             break;
                                         case 180:
-                                            for(HDBlockVolumetricModel bm : modlist) {
-                                                bm.setSubblock(scale-x-1, y, scale-z-1, true);
+                                            for (HDBlockVolumetricModel bm : modlist) {
+                                                bm.setSubblock(scale - x - 1, y, scale - z - 1, true);
                                             }
                                             break;
                                         case 270:
-                                            for(HDBlockVolumetricModel bm : modlist) {
-                                                bm.setSubblock(z, y, scale-x-1, true);
+                                            for (HDBlockVolumetricModel bm : modlist) {
+                                                bm.setSubblock(z, y, scale - x - 1, true);
                                             }
                                             break;
                                     }
                                 }
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Invalid rotate error - line " + lineNum + " of file:  " + fname);
                         continue;
                     }
-                }
-                else if (typeid.equals("patchrotate")) {
+                } else if (typeid.equals("patchrotate")) {
                     // Parse block states
                     bsp.processLine(modname, line, lineNum, varvals);
 
@@ -503,13 +520,21 @@ public class HDBlockModels {
                     int rotx = 0;
                     int roty = 0;
                     int rotz = 0;
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("rot")) { roty = Integer.parseInt(av[1]); }
-                        if(av[0].equals("roty")) { roty = Integer.parseInt(av[1]); }
-                        if(av[0].equals("rotx")) { rotx = Integer.parseInt(av[1]); }
-                        if(av[0].equals("rotz")) { rotz = Integer.parseInt(av[1]); }
+                        if (av.length < 2) continue;
+                        if (av[0].equals("rot")) {
+                            roty = Integer.parseInt(av[1]);
+                        }
+                        if (av[0].equals("roty")) {
+                            roty = Integer.parseInt(av[1]);
+                        }
+                        if (av[0].equals("rotx")) {
+                            rotx = Integer.parseInt(av[1]);
+                        }
+                        if (av[0].equals("rotz")) {
+                            rotz = Integer.parseInt(av[1]);
+                        }
                     }
                     bsprslt = bsp.getMatchingStates();
                     if (bsprslt.size() != 1) {
@@ -526,26 +551,23 @@ public class HDBlockModels {
                     }
                     HDBlockModel mod = models_by_id_data.get(bs.globalStateIndex);
                     if (pmodlist.isEmpty()) {
-                    }
-                    else if ((mod != null) && (mod instanceof HDBlockPatchModel)) {
-                        HDBlockPatchModel pmod = (HDBlockPatchModel)mod;
+                    } else if ((mod != null) && (mod instanceof HDBlockPatchModel)) {
+                        HDBlockPatchModel pmod = (HDBlockPatchModel) mod;
                         PatchDefinition patches[] = pmod.getPatches();
                         PatchDefinition newpatches[] = new PatchDefinition[patches.length];
                         for (int i = 0; i < patches.length; i++) {
-                            newpatches[i] = (PatchDefinition)pdf.getRotatedPatch(patches[i], rotx, roty, rotz, patches[i].textureindex);
+                            newpatches[i] = (PatchDefinition) pdf.getRotatedPatch(patches[i], rotx, roty, rotz, patches[i].textureindex);
                         }
                         if (patches.length > max_patches)
                             max_patches = patches.length;
                         for (HDBlockPatchModel patchmod : pmodlist) {
                             patchmod.setPatches(newpatches);
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Invalid rotate error - line " + lineNum + " of file: " + fname);
                         return;
                     }
-                }
-                else if (typeid.equals("ignore-updates")) {
+                } else if (typeid.equals("ignore-updates")) {
                     // Parse block states
                     bsp.processLine(modname, line, lineNum, varvals);
 
@@ -554,36 +576,31 @@ public class HDBlockModels {
                     for (DynmapBlockState bbs : bsprslt.keySet()) {
                         if (bbs.isNotAir()) {
                             BitSet bits = bsprslt.get(bbs);
-                            for (int i = bits.nextSetBit(0); i >= 0; i = bits.nextSetBit(i+1)) {
+                            for (int i = bits.nextSetBit(0); i >= 0; i = bits.nextSetBit(i + 1)) {
                                 DynmapBlockState bs = bbs.getState(i);
                                 changeIgnoredBlocks.set(bs.globalStateIndex);
                             }
-                        }
-                        else {
+                        } else {
                             Log.severe("Invalid update ignore block name " + bbs + " at line " + lineNum + " of file: " + fname);
                         }
                     }
-                }
-                else if (typeid.equals("enabled")) {  /* Test if texture file is enabled */
+                } else if (typeid.equals("enabled")) {  /* Test if texture file is enabled */
                     if (line.startsWith("true")) {   /* We're enabled? */
                         /* Nothing to do - keep processing */
-                    }
-                    else if (line.startsWith("false")) { /* Disabled */
+                    } else if (line.startsWith("false")) { /* Disabled */
                         return; /* Quit */
                     }
                     /* If setting is not defined or false, quit */
                     else if (config.getBoolean(line, false) == false) {
                         return;
-                    }
-                    else {
+                    } else {
                         Log.info(line + " models enabled");
                     }
-                }
-                else if (typeid.equals("var")) {  /* Test if variable declaration */
+                } else if (typeid.equals("var")) {  /* Test if variable declaration */
                     String args[] = line.split(",");
-                    for(int i = 0; i < args.length; i++) {
+                    for (int i = 0; i < args.length; i++) {
                         String[] v = args[i].split("=");
-                        if(v.length < 2) {
+                        if (v.length < 2) {
                             Log.severe("Format error - line " + lineNum + " of file: " + fname);
                             return;
                         }
@@ -596,20 +613,18 @@ public class HDBlockModels {
                             return;
                         }
                     }
-                }
-                else if (typeid.equals("cfgfile")) { /* If config file */
+                } else if (typeid.equals("cfgfile")) { /* If config file */
                     File cfgfile = new File(line);
                     ForgeConfigFile cfg = new ForgeConfigFile(cfgfile);
                     if (!mod_cfg_loaded) {
                         need_mod_cfg = true;
                     }
-                    if(cfg.load()) {
+                    if (cfg.load()) {
                         cfg.addBlockIDs(varvals);
                         need_mod_cfg = false;
                         mod_cfg_loaded = true;
                     }
-                }
-                else if (typeid.equals("patch")) {
+                } else if (typeid.equals("patch")) {
                     String patchid = null;
                     String[] args = line.split(",");
                     double p_x0 = 0.0, p_y0 = 0.0, p_z0 = 0.0;
@@ -622,73 +637,56 @@ public class HDBlockModels {
                     double p_uplusvmax = -1.0;
                     SideVisible p_sidevis = SideVisible.BOTH;
 
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("id")) {
+                        if (av.length < 2) continue;
+                        if (av[0].equals("id")) {
                             patchid = av[1];
-                        }
-                        else if(av[0].equals("Ox")) {
+                        } else if (av[0].equals("Ox")) {
                             p_x0 = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Oy")) {
+                        } else if (av[0].equals("Oy")) {
                             p_y0 = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Oz")) {
+                        } else if (av[0].equals("Oz")) {
                             p_z0 = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Ux")) {
+                        } else if (av[0].equals("Ux")) {
                             p_xu = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Uy")) {
+                        } else if (av[0].equals("Uy")) {
                             p_yu = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Uz")) {
+                        } else if (av[0].equals("Uz")) {
                             p_zu = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Vx")) {
+                        } else if (av[0].equals("Vx")) {
                             p_xv = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Vy")) {
+                        } else if (av[0].equals("Vy")) {
                             p_yv = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Vz")) {
+                        } else if (av[0].equals("Vz")) {
                             p_zv = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Umin")) {
+                        } else if (av[0].equals("Umin")) {
                             p_umin = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Umax")) {
+                        } else if (av[0].equals("Umax")) {
                             p_umax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Vmin")) {
+                        } else if (av[0].equals("Vmin")) {
                             p_vmin = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("Vmax")) {
+                        } else if (av[0].equals("Vmax")) {
                             p_vmax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("UplusVmax")) {
+                        } else if (av[0].equals("UplusVmax")) {
                             Log.warning("UplusVmax deprecated - use VmaxAtUMax - line " + lineNum + " of file: " + fname);
                             p_uplusvmax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("VmaxAtUMax")) {
+                        } else if (av[0].equals("VmaxAtUMax")) {
                             p_vmaxatumax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("VminAtUMax")) {
+                        } else if (av[0].equals("VminAtUMax")) {
                             p_vminatumax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("visibility")) {
-                            if(av[1].equals("top"))
+                        } else if (av[0].equals("visibility")) {
+                            if (av[1].equals("top"))
                                 p_sidevis = SideVisible.TOP;
-                            else if(av[1].equals("topflip"))
+                            else if (av[1].equals("topflip"))
                                 p_sidevis = SideVisible.TOPFLIP;
-                            else if(av[1].equals("topflipv"))
+                            else if (av[1].equals("topflipv"))
                                 p_sidevis = SideVisible.TOPFLIPV;
-                            else if(av[1].equals("topfliphv"))
+                            else if (av[1].equals("topfliphv"))
                                 p_sidevis = SideVisible.TOPFLIPHV;
-                            else if(av[1].equals("bottom"))
+                            else if (av[1].equals("bottom"))
                                 p_sidevis = SideVisible.BOTTOM;
-                            else if(av[1].equals("flip"))
+                            else if (av[1].equals("flip"))
                                 p_sidevis = SideVisible.FLIP;
                             else
                                 p_sidevis = SideVisible.BOTH;
@@ -709,30 +707,28 @@ public class HDBlockModels {
                         p_vminatumax = p_vmin;
                     }
                     /* If completed, add to map */
-                    if(patchid != null) {
+                    if (patchid != null) {
                         PatchDefinition pd = pdf.getPatch(p_x0, p_y0, p_z0, p_xu, p_yu, p_zu, p_xv, p_yv, p_zv, p_umin, p_umax, p_vmin, p_vminatumax, p_vmax, p_vmaxatumax, p_sidevis, 0);
-                        if(pd != null) {
-                            patchdefs.put(patchid,  pd);
+                        if (pd != null) {
+                            patchdefs.put(patchid, pd);
                         }
                     }
-                }
-                else if (typeid.equals("patchblock")) {
+                } else if (typeid.equals("patchblock")) {
                     // Parse block states
                     bsp.processLine(modname, line, lineNum, varvals);
 
                     String[] args = line.split(",");
                     ArrayList<PatchDefinition> patches = new ArrayList<PatchDefinition>();
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].startsWith("patch")) {
+                        if (av.length < 2) continue;
+                        if (av[0].startsWith("patch")) {
                             int patchnum0, patchnum1;
                             String ids = av[0].substring(5);
                             String[] ids2 = ids.split("-");
                             if (ids2.length == 1) {
                                 patchnum0 = patchnum1 = Integer.parseInt(ids2[0]);
-                            }
-                            else {
+                            } else {
                                 patchnum0 = Integer.parseInt(ids2[0]);
                                 patchnum1 = Integer.parseInt(ids2[1]);
                             }
@@ -752,7 +748,7 @@ public class HDBlockModels {
                                     Log.severe("Invalid patch ID " + patchid + " - line " + lineNum + " of file: " + fname);
                                     return;
                                 }
-                                patches.add(i,  pd);
+                                patches.add(i, pd);
                             }
                         }
                     }
@@ -761,19 +757,17 @@ public class HDBlockModels {
                     pmodlist.clear();
                     if (bsprslt.size() > 0) {
                         PatchDefinition[] patcharray = patches.toArray(new PatchDefinition[patches.size()]);
-                        if(patcharray.length > max_patches)
+                        if (patcharray.length > max_patches)
                             max_patches = patcharray.length;
                         for (DynmapBlockState bs : bsprslt.keySet()) {
                             if (bs.isNotAir()) {
                                 pmodlist.add(new HDBlockPatchModel(bs, bsprslt.get(bs), patcharray, blockset));
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid patchmodel block name " + bs + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Patch block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
                 }
@@ -785,28 +779,22 @@ public class HDBlockModels {
                     String[] args = line.split(",");
                     double xmin = 0.0, xmax = 1.0, ymin = 0.0, ymax = 1.0, zmin = 0.0, zmax = 1.0;
                     int[] patchlist = boxPatchList;
-                    for(String a : args) {
+                    for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
-                        if(av[0].equals("xmin")) {
+                        if (av.length < 2) continue;
+                        if (av[0].equals("xmin")) {
                             xmin = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("xmax")) {
+                        } else if (av[0].equals("xmax")) {
                             xmax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("ymin")) {
+                        } else if (av[0].equals("ymin")) {
                             ymin = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("ymax")) {
+                        } else if (av[0].equals("ymax")) {
                             ymax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("zmin")) {
+                        } else if (av[0].equals("zmin")) {
                             zmin = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("zmax")) {
+                        } else if (av[0].equals("zmax")) {
                             zmax = Double.parseDouble(av[1]);
-                        }
-                        else if(av[0].equals("patches")) {
+                        } else if (av[0].equals("patches")) {
                             String[] v = av[1].split("/");
                             patchlist = new int[6];
                             for (int vidx = 0; (vidx < v.length) && (vidx < patchlist.length); vidx++) {
@@ -830,13 +818,11 @@ public class HDBlockModels {
                             if (bs.isNotAir()) {
                                 pmodlist.add(new HDBlockPatchModel(bs, bsprslt.get(bs), patcharray, blockset));
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid boxmodel block name " + bs + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Box block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
                 }
@@ -849,7 +835,7 @@ public class HDBlockModels {
                     ArrayList<BoxLimits> boxes = new ArrayList<BoxLimits>();
                     for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
+                        if (av.length < 2) continue;
                         if (av[0].equals("box")) {
                             String[] prms = av[1].split(":");
                             BoxLimits box = new BoxLimits();
@@ -896,14 +882,12 @@ public class HDBlockModels {
                             if (bs.isNotAir()) {
                                 pmodlist.add(new HDBlockPatchModel(bs, bsprslt.get(bs), patcharray, blockset));
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid boxlist block name " + bs + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
-                        Log.severe("Box list block model missing required parameters = line " + lineNum  + " of file: " + fname);
+                    } else {
+                        Log.severe("Box list block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
                 }
                 // Shortcur for building JSON model style
@@ -915,13 +899,13 @@ public class HDBlockModels {
                     ArrayList<ModelBox> boxes = new ArrayList<ModelBox>();
                     for (String a : args) {
                         String[] av = a.split("=");
-                        if(av.length < 2) continue;
+                        if (av.length < 2) continue;
                         if (av[0].equals("box")) {
                             // box=from-x/y/z:to-x/y/z/rotx/roty/rotz:<side - upnsew>/<txtidx>/umin/vmin/umax/vmax>:...
                             String[] prms = av[1].split(":");
 
                             ModelBox box = new ModelBox();
-                            if (prms.length > 0) {	// Handle from (from-x/y/z or from-x/y/z/shadow)
+                            if (prms.length > 0) {    // Handle from (from-x/y/z or from-x/y/z/shadow)
                                 String[] xyz = prms[0].split("/");
                                 if ((xyz.length == 3) || (xyz.length == 4)) {
                                     box.from[0] = Double.parseDouble(xyz[0]);
@@ -930,29 +914,27 @@ public class HDBlockModels {
                                     if ((xyz.length >= 4) && (xyz[3].equals("false"))) {
                                         box.shade = false;
                                     }
-                                }
-                                else {
+                                } else {
                                     Log.severe("Invalid modellist FROM value (" + prms[0] + " at line " + lineNum + " of file: " + fname);
                                 }
                             }
-                            if (prms.length > 1) {	// Handle to (to-x/y/z or to-x/y/z/rotx/roty/rotz) or to-x/y/z/rotx/roty/rotz/rorigx/rorigy/rorigz
+                            if (prms.length > 1) {    // Handle to (to-x/y/z or to-x/y/z/rotx/roty/rotz) or to-x/y/z/rotx/roty/rotz/rorigx/rorigy/rorigz
                                 String[] xyz = prms[1].split("/");
                                 if (xyz.length >= 3) {
                                     box.to[0] = Double.parseDouble(xyz[0]);
                                     box.to[1] = Double.parseDouble(xyz[1]);
                                     box.to[2] = Double.parseDouble(xyz[2]);
-                                    if (xyz.length >= 6) {	// If 6, second set are rotations (xrot/yrot/zrot)
+                                    if (xyz.length >= 6) {    // If 6, second set are rotations (xrot/yrot/zrot)
                                         box.xrot = Double.parseDouble(xyz[3]);
                                         box.yrot = Double.parseDouble(xyz[4]);
                                         box.zrot = Double.parseDouble(xyz[5]);
                                     }
-                                    if (xyz.length >= 9) {	// If 9, third set is rotation origin (xrot/yrot/zrot)
+                                    if (xyz.length >= 9) {    // If 9, third set is rotation origin (xrot/yrot/zrot)
                                         box.xrotorig = Double.parseDouble(xyz[6]);
                                         box.yrotorig = Double.parseDouble(xyz[7]);
                                         box.zrotorig = Double.parseDouble(xyz[8]);
                                     }
-                                }
-                                else {
+                                } else {
                                     Log.severe("Invalid modellist TO value (" + prms[1] + " at line " + lineNum + " of file: " + fname);
                                 }
                             }
@@ -1035,8 +1017,7 @@ public class HDBlockModels {
                                         if (patch == null) continue;
                                     }
                                     pd.add(patch);
-                                }
-                                else {
+                                } else {
                                     Log.severe(String.format("Invalid modellist patch for box %.02f/%.02f/%.02f:%.02f/%.02f/%.02f side %s at line %d of file: %s", bl.from[0], bl.from[1], bl.from[2], bl.to[0], bl.to[1], bl.to[2], side.side, lineNum, fname));
                                     Log.verboseinfo(String.format("line = %s:%s", typeid, line));
                                 }
@@ -1052,21 +1033,18 @@ public class HDBlockModels {
                             if (bs.isNotAir()) {
                                 pmodlist.add(new HDBlockPatchModel(bs, bsprslt.get(bs), patcharray, blockset));
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid modellist block name " + bs + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Model list block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
-                }
-                else if (typeid.equals("customblock")) {
+                } else if (typeid.equals("customblock")) {
                     // Parse block states
                     bsp.processLine(modname, line, lineNum, varvals);
 
-                    HashMap<String,String> custargs = new HashMap<String,String>();
+                    HashMap<String, String> custargs = new HashMap<String, String>();
                     String[] args = line.split(",");
                     String cls = null;
                     for (String a : args) {
@@ -1074,14 +1052,12 @@ public class HDBlockModels {
                         if (av.length < 2) continue;
                         if (av[0].equals("id") || av[0].equals("data") || av[0].equals("state")) {
                             // Skip block state args - should not be bassed to custom block handler
-                        }
-                        else if (av[0].equals("class")) {
+                        } else if (av[0].equals("class")) {
                             cls = av[1];
-                        }
-                        else {
+                        } else {
                             /* See if substitution value available */
                             Integer vv = varvals.get(av[1]);
-                            if(vv == null)
+                            if (vv == null)
                                 custargs.put(av[0], av[1]);
                             else
                                 custargs.put(av[0], vv.toString());
@@ -1093,31 +1069,27 @@ public class HDBlockModels {
                         for (DynmapBlockState bs : bsprslt.keySet()) {
                             if (bs.isNotAir()) {
                                 CustomBlockModel cbm = new CustomBlockModel(bs, bsprslt.get(bs), cls, custargs, blockset);
-                                if(cbm.render == null) {
+                                if (cbm.render == null) {
                                     Log.severe("Custom block model failed to initialize = line " + lineNum + " of file: " + fname);
-                                }
-                                else {
+                                } else {
                                     /* Update maximum texture count */
                                     int texturecnt = cbm.getTextureCount();
-                                    if(texturecnt > max_patches) {
+                                    if (texturecnt > max_patches) {
                                         max_patches = texturecnt;
                                     }
                                 }
                                 cnt++;
-                            }
-                            else {
+                            } else {
                                 Log.severe("Invalid custommodel block name " + bs + " at line " + lineNum + " of file: " + fname);
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Log.severe("Custom block model missing required parameters = line " + lineNum + " of file: " + fname);
                     }
-                }
-                else if (typeid.equals("modname")) {
+                } else if (typeid.equals("modname")) {
                     String[] names = line.split(",");
                     boolean found = false;
-                    for(String n : names) {
+                    for (String n : names) {
                         String[] ntok = n.split("[\\[\\]]");
                         String rng = null;
                         if (ntok.length > 1) {
@@ -1129,7 +1101,7 @@ public class HDBlockModels {
                             return;
                         }
                         String modver = core.getServer().getModVersion(n);
-                        if((modver != null) && ((rng == null) || checkVersionRange(modver, rng))) {
+                        if ((modver != null) && ((rng == null) || checkVersionRange(modver, rng))) {
                             found = true;
                             Log.info(n + "[" + modver + "] models enabled");
                             modname = n;
@@ -1140,23 +1112,21 @@ public class HDBlockModels {
                             break;
                         }
                     }
-                    if(!found) {
+                    if (!found) {
                         return;
                     }
-                }
-                else if (typeid.equals("version")) {
+                } else if (typeid.equals("version")) {
                     if (!checkVersionRange(mcver, line)) {
                         return;
                     }
-                }
-                else if(layerbits != 0) {   /* If we're working pattern lines */
+                } else if (layerbits != 0) {   /* If we're working pattern lines */
                     /* Layerbits determine Y, rows count from North to South (X=0 to X=N-1), columns Z are West to East (N-1 to 0) */
-                    for(int i = 0; (i < scale) && (i < line.length()); i++) {
-                        if(line.charAt(i) == '*') { /* If an asterix, set flag */
-                            for(int y = 0; y < scale; y++) {
-                                if((layerbits & (1<<y)) != 0) {
-                                    for(HDBlockVolumetricModel mod : modlist) {
-                                        mod.setSubblock(rownum, y, scale-i-1, true);
+                    for (int i = 0; (i < scale) && (i < line.length()); i++) {
+                        if (line.charAt(i) == '*') { /* If an asterix, set flag */
+                            for (int y = 0; y < scale; y++) {
+                                if ((layerbits & (1 << y)) != 0) {
+                                    for (HDBlockVolumetricModel mod : modlist) {
+                                        mod.setSubblock(rownum, y, scale - i - 1, true);
                                     }
                                 }
                             }
@@ -1164,7 +1134,7 @@ public class HDBlockModels {
                     }
                     /* See if we're done with layer */
                     rownum++;
-                    if(rownum >= scale) {
+                    if (rownum >= scale) {
                         rownum = 0;
                         layerbits = 0;
                     }
@@ -1179,7 +1149,7 @@ public class HDBlockModels {
         } catch (NumberFormatException nfx) {
             Log.severe("Format error - line " + rdr.getLineNumber() + " of file: " + fname + ": " + nfx.getMessage());
         } finally {
-            if(rdr != null) {
+            if (rdr != null) {
                 try {
                     rdr.close();
                     rdr = null;
@@ -1189,7 +1159,8 @@ public class HDBlockModels {
             pdf.setPatchNameMape(null);
         }
     }
-    private static long vscale[] = { 10000000000L, 100000000, 1000000, 10000, 100, 1 };
+
+    private static long vscale[] = {10000000000L, 100000000, 1000000, 10000, 100, 1};
 
     private static String normalizeVersion(String v) {
         StringBuilder v2 = new StringBuilder();
@@ -1199,8 +1170,7 @@ public class HDBlockModels {
             if ((c == '.') || ((c >= '0') && (c <= '9'))) {
                 v2.append(c);
                 skip = false;
-            }
-            else {
+            } else {
                 if (!skip) {
                     skip = true;
                     v2.append('.');
@@ -1215,19 +1185,19 @@ public class HDBlockModels {
         String[] vv = v.split("\\.");
         long ver = 0;
         for (int i = 0; i < vscale.length; i++) {
-            if (i < vv.length){
+            if (i < vv.length) {
                 try {
                     ver += vscale[i] * Integer.parseInt(vv[i]);
                 } catch (NumberFormatException nfx) {
                 }
-            }
-            else if (up) {
+            } else if (up) {
                 ver += vscale[i] * 99;
             }
         }
 
         return ver;
     }
+
     public static boolean checkVersionRange(String ver, String range) {
         if (ver.equals(range))
             return true;
@@ -1241,8 +1211,7 @@ public class HDBlockModels {
         if (rng.length == 1) {
             low = rng[0];
             high = rng[0];
-        }
-        else {
+        } else {
             low = rng[0];
             high = rng[1];
         }

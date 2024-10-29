@@ -1,12 +1,11 @@
 package org.dynmap.forge_1_21.permissions;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import net.minecraft.server.level.ServerPlayer;
 import org.dynmap.Log;
 import org.dynmap.forge_1_21.DynmapPlugin;
 
-import net.minecraft.server.level.ServerPlayer;
+import java.util.HashSet;
+import java.util.Set;
 
 public class OpPermissions implements PermissionProvider {
     public HashSet<String> usrCommands = new HashSet<String>();
@@ -21,11 +20,12 @@ public class OpPermissions implements PermissionProvider {
     @Override
     public Set<String> hasOfflinePermissions(String player, Set<String> perms) {
         HashSet<String> rslt = new HashSet<String>();
-        if(DynmapPlugin.plugin.isOp(player)) {
+        if (DynmapPlugin.plugin.isOp(player)) {
             rslt.addAll(perms);
         }
         return rslt;
     }
+
     @Override
     public boolean hasOfflinePermission(String player, String perm) {
         return DynmapPlugin.plugin.isOp(player);
@@ -33,19 +33,20 @@ public class OpPermissions implements PermissionProvider {
 
     @Override
     public boolean has(ServerPlayer psender, String permission) {
-        if(psender != null) {
-            if(usrCommands.contains(permission)) {
+        if (psender != null) {
+            if (usrCommands.contains(permission)) {
                 return true;
             }
             return DynmapPlugin.plugin.isOp(psender.getName().getString());
         }
         return true;
     }
+
     @Override
     public boolean hasPermissionNode(ServerPlayer psender, String permission) {
-        if(psender != null) {
+        if (psender != null) {
             return DynmapPlugin.plugin.isOp(psender.getName().getString());
         }
         return true;
-    } 
+    }
 }

@@ -15,29 +15,39 @@ import java.io.IOException;
 public class HandlerRouter extends AbstractHandler {
 
     PathMap<HandlerOrServlet> pathMap = new PathMap<HandlerOrServlet>();
-    
+
     private static class HandlerOrServlet {
-    	Servlet servlet;
-    	Handler handler;
-    	HandlerOrServlet(Servlet s) { servlet = s; handler = null; }
-    	HandlerOrServlet(Handler h) { servlet = null; handler = h; }
-    };
-    
+        Servlet servlet;
+        Handler handler;
+
+        HandlerOrServlet(Servlet s) {
+            servlet = s;
+            handler = null;
+        }
+
+        HandlerOrServlet(Handler h) {
+            servlet = null;
+            handler = h;
+        }
+    }
+
+    ;
+
     public HandlerRouter() {
     }
-    
+
     public void addHandler(String path, Handler handler) {
         pathMap.put(path, new HandlerOrServlet(handler));
     }
-    
+
     public void addServlet(String path, Servlet servlet) {
         pathMap.put(path, new HandlerOrServlet(servlet));
     }
-    
+
     public void clear() {
         pathMap.clear();
     }
-    
+
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String pathInfo = request.getPathInfo();
@@ -47,18 +57,19 @@ public class HandlerRouter extends AbstractHandler {
         String childPathInfo = pathInfo;
         if (mappedPath != null) {
             int i = 0;
-            while(i<mappedPath.length() && mappedPath.charAt(i) == pathInfo.charAt(i)){ i++; }
+            while (i < mappedPath.length() && mappedPath.charAt(i) == pathInfo.charAt(i)) {
+                i++;
+            }
             childPathInfo = childPathInfo.substring(i);
         }
 
-        org.eclipse.jetty.server.Request r = (org.eclipse.jetty.server.Request)request;
+        org.eclipse.jetty.server.Request r = (org.eclipse.jetty.server.Request) request;
         r.setPathInfo(childPathInfo);
 
         HandlerOrServlet o = e.getValue();
         if (o.handler != null) {
             o.handler.handle(target, baseRequest, request, response);
-        }
-        else if (o.servlet != null) {
+        } else if (o.servlet != null) {
             o.servlet.service(request, response);
         }
 

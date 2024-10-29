@@ -1,10 +1,9 @@
 package org.dynmap.fabric_1_21_1.mixin;
 
-import net.minecraft.world.chunk.ChunkGenerating;
-import net.minecraft.world.chunk.ChunkGenerationContext;
 import net.minecraft.world.chunk.AbstractChunkHolder;
 import net.minecraft.world.chunk.Chunk;
-
+import net.minecraft.world.chunk.ChunkGenerating;
+import net.minecraft.world.chunk.ChunkGenerationContext;
 import org.dynmap.fabric_1_21_1.access.ProtoChunkAccessor;
 import org.dynmap.fabric_1_21_1.event.CustomServerChunkEvents;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,7 +19,7 @@ public abstract class ChunkGeneratingMixin {
             at = @At("TAIL")
     )
     private static void onChunkGenerate(Chunk chunk, ChunkGenerationContext chunkGenerationContext, AbstractChunkHolder chunkHolder, CallbackInfoReturnable<Chunk> callbackInfoReturnable) {
-        if (((ProtoChunkAccessor)chunk).getTouchedByWorldGen()) {
+        if (((ProtoChunkAccessor) chunk).getTouchedByWorldGen()) {
             CustomServerChunkEvents.CHUNK_GENERATE.invoker().onChunkGenerate(chunkGenerationContext.world(), callbackInfoReturnable.getReturnValue());
         }
     }

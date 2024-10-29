@@ -1,7 +1,6 @@
 package org.dynmap.fabric_1_21_1.mixin;
 
 import net.minecraft.server.MinecraftServer;
-
 import org.dynmap.fabric_1_21_1.event.CustomServerLifecycleEvents;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

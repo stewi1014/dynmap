@@ -27,7 +27,7 @@ import java.net.UnknownHostException;
  *
  * @author Luke Taylor
  * @since 3.0.2
- * 
+ * <p>
  * Slightly modified by omidzk to have zero dependency to any frameworks other than the JRE.
  */
 public final class IpAddressMatcher {
@@ -39,7 +39,7 @@ public final class IpAddressMatcher {
      * 192.168.1.0/24 or 202.24.0.0/14).
      *
      * @param ipAddress the address or range of addresses from which the request must
-     * come.
+     *                  come.
      */
     public IpAddressMatcher(String ipAddress) {
 
@@ -47,12 +47,11 @@ public final class IpAddressMatcher {
             String[] addressAndMask = ipAddress.split("/");
             ipAddress = addressAndMask[0];
             nMaskBits = Integer.parseInt(addressAndMask[1]);
-        }
-        else {
+        } else {
             nMaskBits = -1;
         }
         requiredAddress = parseAddress(ipAddress);
-        assert  (requiredAddress.getAddress().length * 8 >= nMaskBits) :
+        assert (requiredAddress.getAddress().length * 8 >= nMaskBits) :
                 String.format("IP address %s is too short for bitmask of length %d",
                         ipAddress, nMaskBits);
     }
@@ -92,8 +91,7 @@ public final class IpAddressMatcher {
     private InetAddress parseAddress(String address) {
         try {
             return InetAddress.getByName(address);
-        }
-        catch (UnknownHostException e) {
+        } catch (UnknownHostException e) {
             throw new IllegalArgumentException("Failed to parse address" + address, e);
         }
     }

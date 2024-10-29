@@ -12,28 +12,28 @@ public class Event<T> {
     private Object lock = new Object();
 
     public void addListener(Listener<T> l) {
-        synchronized(lock) {
+        synchronized (lock) {
             listeners.add(l);
         }
     }
 
     public void removeListener(Listener<T> l) {
-        synchronized(lock) {
+        synchronized (lock) {
             listeners.remove(l);
         }
     }
-    
+
     /* Only use from main thread */
     public void trigger(T t) {
         ArrayList<Listener<T>> iterlist;
-        synchronized(lock) {
+        synchronized (lock) {
             iterlist = new ArrayList<Listener<T>>(listeners);
         }
         for (Listener<T> l : iterlist) {
             l.triggered(t);
         }
     }
-    
+
     /* Trigger on main thread */
     public boolean triggerSync(DynmapCore core, final T t) {
         Future<T> future = core.getServer().callSyncMethod(new Callable<T>() {
@@ -41,11 +41,11 @@ public class Event<T> {
             public T call() throws Exception {
                 trigger(t);
                 return t;
-            }            
+            }
         });
         boolean success = false;
         try {
-            if(future != null) {
+            if (future != null) {
                 future.get();
                 success = true;
             }

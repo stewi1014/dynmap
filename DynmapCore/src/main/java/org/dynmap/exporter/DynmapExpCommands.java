@@ -1,14 +1,5 @@
 package org.dynmap.exporter;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import org.dynmap.DynmapCore;
 import org.dynmap.DynmapLocation;
 import org.dynmap.DynmapWorld;
@@ -16,6 +7,11 @@ import org.dynmap.MapManager;
 import org.dynmap.common.DynmapCommandSender;
 import org.dynmap.common.DynmapPlayer;
 import org.dynmap.hdmap.HDShader;
+
+import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Handler for export commands (/dynmapexp)
@@ -41,14 +37,14 @@ public class DynmapExpCommands {
     private String getContextID(DynmapCommandSender sender) {
         String id = "<console>";
         if (sender instanceof DynmapPlayer) {
-            id = ((DynmapPlayer)sender).getName();
+            id = ((DynmapPlayer) sender).getName();
         }
         return id;
     }
-    
+
     private ExportContext getContext(DynmapCommandSender sender) {
         String id = getContextID(sender);
-        
+
         ExportContext ctx = sessions.get(id);
         if (ctx == null) {
             ctx = new ExportContext();
@@ -56,41 +52,34 @@ public class DynmapExpCommands {
         }
         return ctx;
     }
-    
+
     public boolean processCommand(DynmapCommandSender sender, String cmd, String commandLabel, String[] args, DynmapCore core) {
         /* Re-parse args - handle doublequotes */
         args = DynmapCore.parseArgs(args, sender);
-        if(args.length < 1)
+        if (args.length < 1)
             return false;
-        if(!core.checkPlayerPermission(sender, "dynmapexp.export")) {
+        if (!core.checkPlayerPermission(sender, "dynmapexp.export")) {
             return true;
         }
         cmd = args[0];
         boolean rslt = false;
         ExportContext ctx = getContext(sender);
-        
-        if(cmd.equalsIgnoreCase("set")) {
+
+        if (cmd.equalsIgnoreCase("set")) {
             rslt = handleSetExport(sender, args, ctx, core);
-        }
-        else if (cmd.equalsIgnoreCase("radius")) {
+        } else if (cmd.equalsIgnoreCase("radius")) {
             rslt = handleRadius(sender, args, ctx, core);
-        }
-        else if (cmd.equalsIgnoreCase("pos0")) {
+        } else if (cmd.equalsIgnoreCase("pos0")) {
             rslt = handlePosN(sender, args, ctx, core, 0);
-        }
-        else if (cmd.equalsIgnoreCase("pos1")) {
+        } else if (cmd.equalsIgnoreCase("pos1")) {
             rslt = handlePosN(sender, args, ctx, core, 1);
-        }
-        else if (cmd.equalsIgnoreCase("export")) {
+        } else if (cmd.equalsIgnoreCase("export")) {
             rslt = handleDoExport(sender, args, ctx, core);
-        }
-        else if(cmd.equalsIgnoreCase("reset")) {
+        } else if (cmd.equalsIgnoreCase("reset")) {
             rslt = handleResetExport(sender, args, ctx, core);
-        }
-        else if(cmd.equalsIgnoreCase("purge")) {
+        } else if (cmd.equalsIgnoreCase("purge")) {
             rslt = handlePurgeExport(sender, args, ctx, core);
-        }
-        else if(cmd.equalsIgnoreCase("info")) {
+        } else if (cmd.equalsIgnoreCase("info")) {
             rslt = handleInfo(sender, args, ctx, core);
         }
 
@@ -99,18 +88,18 @@ public class DynmapExpCommands {
 
     public List<String> getTabCompletions(DynmapCommandSender sender, String[] args, DynmapCore core) {
         /* Re-parse args - handle doublequotes */
-		args = DynmapCore.parseArgs(args, sender, true);
+        args = DynmapCore.parseArgs(args, sender, true);
 
-		if (args == null || args.length <= 1) {
-			return Collections.emptyList();
-		}
+        if (args == null || args.length <= 1) {
+            return Collections.emptyList();
+        }
 
-		String cmd = args[0];
+        String cmd = args[0];
 
-        if(cmd.equalsIgnoreCase("set")) {
+        if (cmd.equalsIgnoreCase("set")) {
             List<String> keys = new ArrayList<>(
                     Arrays.asList("x0", "x1", "y0", "y1", "z0", "z1", "world", "shader", "byChunk",
-                                  "byBlockID", "byBlockIDData", "byTexture"));
+                            "byBlockID", "byBlockIDData", "byTexture"));
 
             if (args.length % 2 == 0) { // Args contain only complete key value argument pairs (plus subcommand)
                 // Remove previous used keys
@@ -123,7 +112,7 @@ public class DynmapExpCommands {
                 final String lastKey = args[args.length - 2];
                 final String lastValue = args[args.length - 1];
 
-                switch(lastKey) {
+                switch (lastKey) {
                     case "world":
                         return core.getWorldSuggestions(lastValue);
                     case "shader":
@@ -150,69 +139,56 @@ public class DynmapExpCommands {
         sender.sendMessage(String.format("groups: byChunk: %b, byBlockID: %b, byBlockIDData: %b, byTexture: %b", ctx.groupByChunk, ctx.groupByBlockID, ctx.groupByBlockIDData, ctx.groupByTexture));
         return true;
     }
-    
+
     private boolean handleSetExport(DynmapCommandSender sender, String[] args, ExportContext ctx, DynmapCore core) {
         if (args.length < 3) {
             sender.sendMessage(String.format("Bounds: <%s,%s,%s> - <%s,%s,%s> on world '%s'", val(ctx.xmin), val(ctx.ymin), val(ctx.zmin),
                     val(ctx.xmax), val(ctx.ymax), val(ctx.zmax), ctx.world));
             return true;
         }
-        for (int i = 1; i < (args.length-1); i += 2) {
+        for (int i = 1; i < (args.length - 1); i += 2) {
             try {
                 if (args[i].equals("x0")) {
-                    ctx.xmin = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("x1")) {
-                    ctx.xmax = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("y0")) {
-                    ctx.ymin = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("y1")) {
-                    ctx.ymax = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("z0")) {
-                    ctx.zmin = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("z1")) {
-                    ctx.zmax = Integer.parseInt(args[i+1]);
-                }
-                else if (args[i].equals("world")) {
-                    DynmapWorld w = core.getWorld(args[i+1]);
+                    ctx.xmin = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("x1")) {
+                    ctx.xmax = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("y0")) {
+                    ctx.ymin = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("y1")) {
+                    ctx.ymax = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("z0")) {
+                    ctx.zmin = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("z1")) {
+                    ctx.zmax = Integer.parseInt(args[i + 1]);
+                } else if (args[i].equals("world")) {
+                    DynmapWorld w = core.getWorld(args[i + 1]);
                     if (w != null) {
-                        ctx.world = args[i+1];
-                    }
-                    else {
-                        sender.sendMessage("Invalid world '" + args[i+1] + "'");
+                        ctx.world = args[i + 1];
+                    } else {
+                        sender.sendMessage("Invalid world '" + args[i + 1] + "'");
                         return true;
                     }
-                }
-                else if (args[i].equals("shader")) {
-                    HDShader s = MapManager.mapman.hdmapman.shaders.get(args[i+1]);
+                } else if (args[i].equals("shader")) {
+                    HDShader s = MapManager.mapman.hdmapman.shaders.get(args[i + 1]);
                     if (s == null) {
-                        sender.sendMessage("Unknown shader '" + args[i+1] + "'");
+                        sender.sendMessage("Unknown shader '" + args[i + 1] + "'");
                         return true;
                     }
-                    ctx.shader = args[i+1];
-                }
-                else if (args[i].equals("byChunk")) {
-                    ctx.groupByChunk = args[i+1].equalsIgnoreCase("true");
-                }
-                else if (args[i].equals("byBlockID")) {
-                    ctx.groupByBlockID = args[i+1].equalsIgnoreCase("true");
-                }
-                else if (args[i].equals("byBlockIDData")) {
-                    ctx.groupByBlockIDData = args[i+1].equalsIgnoreCase("true");
-                }
-                else if (args[i].equals("byTexture")) {
-                    ctx.groupByTexture = args[i+1].equalsIgnoreCase("true");
-                }
-                else {  // Unknown setting
+                    ctx.shader = args[i + 1];
+                } else if (args[i].equals("byChunk")) {
+                    ctx.groupByChunk = args[i + 1].equalsIgnoreCase("true");
+                } else if (args[i].equals("byBlockID")) {
+                    ctx.groupByBlockID = args[i + 1].equalsIgnoreCase("true");
+                } else if (args[i].equals("byBlockIDData")) {
+                    ctx.groupByBlockIDData = args[i + 1].equalsIgnoreCase("true");
+                } else if (args[i].equals("byTexture")) {
+                    ctx.groupByTexture = args[i + 1].equalsIgnoreCase("true");
+                } else {  // Unknown setting
                     sender.sendMessage("Unknown setting '" + args[i] + "'");
                     return true;
                 }
             } catch (NumberFormatException nfx) {
-                sender.sendMessage("Invalid value for '" + args[i] + "' - " + args[i+1]);
+                sender.sendMessage("Invalid value for '" + args[i] + "' - " + args[i + 1]);
                 return true;
             }
         }
@@ -247,10 +223,10 @@ public class DynmapExpCommands {
                 return true;
             }
         }
-        ctx.xmin = (int)Math.floor(loc.x) - radius;
-        ctx.xmax = (int)Math.ceil(loc.x) + radius;
-        ctx.zmin = (int)Math.floor(loc.z) - radius;
-        ctx.zmax = (int)Math.ceil(loc.z) + radius;
+        ctx.xmin = (int) Math.floor(loc.x) - radius;
+        ctx.xmax = (int) Math.ceil(loc.x) + radius;
+        ctx.zmin = (int) Math.floor(loc.z) - radius;
+        ctx.zmax = (int) Math.ceil(loc.z) + radius;
         ctx.ymin = world.minY;
         ctx.ymax = world.worldheight - 1;
         ctx.world = world.getName();
@@ -273,24 +249,23 @@ public class DynmapExpCommands {
             return true;
         }
         if (n == 0) {
-            ctx.xmin = (int)Math.floor(loc.x);
-            ctx.ymin = (int)Math.floor(loc.y);
-            ctx.zmin = (int)Math.floor(loc.z);
-        }
-        else {
-            ctx.xmax = (int)Math.floor(loc.x);
-            ctx.ymax = (int)Math.floor(loc.y);
-            ctx.zmax = (int)Math.floor(loc.z);
+            ctx.xmin = (int) Math.floor(loc.x);
+            ctx.ymin = (int) Math.floor(loc.y);
+            ctx.zmin = (int) Math.floor(loc.z);
+        } else {
+            ctx.xmax = (int) Math.floor(loc.x);
+            ctx.ymax = (int) Math.floor(loc.y);
+            ctx.zmax = (int) Math.floor(loc.z);
         }
         ctx.world = world.getName();
-        
+
         return handleInfo(sender, args, ctx, core);
     }
-    
+
     private boolean handleDoExport(DynmapCommandSender sender, String[] args, ExportContext ctx, DynmapCore core) {
-        if ((ctx.world == null) || (ctx.xmin == Integer.MIN_VALUE) || (ctx.ymin == Integer.MIN_VALUE) || 
-            (ctx.zmin == Integer.MIN_VALUE) || (ctx.xmax == Integer.MIN_VALUE) || (ctx.ymax == Integer.MIN_VALUE) ||
-            (ctx.zmax == Integer.MIN_VALUE)) {
+        if ((ctx.world == null) || (ctx.xmin == Integer.MIN_VALUE) || (ctx.ymin == Integer.MIN_VALUE) ||
+                (ctx.zmin == Integer.MIN_VALUE) || (ctx.xmax == Integer.MIN_VALUE) || (ctx.ymax == Integer.MIN_VALUE) ||
+                (ctx.zmax == Integer.MIN_VALUE)) {
             sender.sendMessage("Bounds not set");
             return true;
         }
@@ -304,7 +279,7 @@ public class DynmapExpCommands {
             sender.sendMessage("Invalid shader - " + ctx.shader);
             return true;
         }
-        
+
         String basename = "dynmapexp";
         if (args.length > 1) {
             basename = args[1];
@@ -320,7 +295,7 @@ public class DynmapExpCommands {
             f = new File(core.getExportFolder(), finalBasename + ".zip");
         }
         sender.sendMessage("Exporting to " + f.getPath());
-        
+
         OBJExport exp = new OBJExport(f, s, w, core, finalBasename);
         exp.setRenderBounds(ctx.xmin, ctx.ymin, ctx.zmin, ctx.xmax, ctx.ymax, ctx.zmax);
         exp.setGroupEnabled(OBJExport.GROUP_CHUNK, ctx.groupByChunk);
@@ -328,15 +303,15 @@ public class DynmapExpCommands {
         exp.setGroupEnabled(OBJExport.GROUP_BLOCKID, ctx.groupByBlockID);
         exp.setGroupEnabled(OBJExport.GROUP_BLOCKIDMETA, ctx.groupByBlockIDData);
         MapManager.mapman.startOBJExport(exp, sender);
-        
+
         return true;
     }
-    
+
     private boolean handleResetExport(DynmapCommandSender sender, String[] args, ExportContext ctx, DynmapCore core) {
         sessions.remove(getContextID(sender));
         return true;
     }
-    
+
     private boolean handlePurgeExport(DynmapCommandSender sender, String[] args, ExportContext ctx, DynmapCore core) {
         if (args.length > 1) {
             String basename = args[1];
@@ -346,14 +321,13 @@ public class DynmapExpCommands {
             if (f.exists()) {
                 f.delete();
                 sender.sendMessage("Removed " + f.getPath());
-            }
-            else {
+            } else {
                 sender.sendMessage(f.getPath() + " not found");
             }
         }
         return true;
     }
-    
+
     private String val(int v) {
         if (v == Integer.MIN_VALUE)
             return "N/A";

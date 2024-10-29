@@ -3,7 +3,6 @@ package org.dynmap.fabric_1_21_1.mixin;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.world.TeleportTarget;
-
 import org.dynmap.fabric_1_21_1.event.PlayerEvents;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

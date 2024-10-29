@@ -19,9 +19,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import org.dynmap.DynmapChunk;
+import org.dynmap.DynmapCommonAPIListener;
 import org.dynmap.DynmapWorld;
 import org.dynmap.Log;
-import org.dynmap.DynmapCommonAPIListener;
 import org.dynmap.common.BiomeMap;
 import org.dynmap.common.DynmapListenerManager;
 import org.dynmap.common.DynmapPlayer;
@@ -94,7 +94,7 @@ public class FabricServer extends DynmapServerInterface {
     }
 
     @SuppressWarnings("deprecation") /* Not much I can do... fix this if it breaks. */
-	@Override
+    @Override
     public int isSignAt(String wname, int x, int y, int z) {
         World world = plugin.getWorldByName(wname).getWorld();
 
