@@ -18,12 +18,8 @@ plugins {
     id 'maven-publish'
 }
 
-apply plugin: 'eclipse'
-
-eclipse {
-    project {
-        name = "Dynmap"
-    }
+static def getCommitHash() {
+    'git rev-parse --verify --short HEAD'.execute().text.trim()
 }
 
 allprojects {
@@ -41,8 +37,7 @@ allprojects {
     apply plugin: 'java'
 
     group = 'us.dynmap'
-    version = '3.7-beta-7'
-
+    version = getCommitHash()
 }
 
 java {

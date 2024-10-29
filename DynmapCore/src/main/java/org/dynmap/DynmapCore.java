@@ -133,14 +133,16 @@ public class DynmapCore implements DynmapCommonAPI {
     private MarkerAPIImpl markerapi;
 
     private File dataDirectory;
-    private File tilesDirectory;
+    private File dynmapTilesDirectory;
     private File exportDirectory;
     private File importDirectory;
     private String plugin_ver;
     private MapStorage defaultStorage;
 
     // Read web path
-    private String webpath;
+    private String dynmap_web_path;
+    private String serve_tiles_path;
+
     // And whether to disable web file update
     private boolean updatewebpathfiles = true;
 
@@ -191,8 +193,12 @@ public class DynmapCore implements DynmapCommonAPI {
         return dataDirectory;
     }
 
-    public final File getTilesFolder() {
-        return tilesDirectory;
+    public final String getServeTilesPath() {
+        return serve_tiles_path;
+    }
+
+    public final File getDynmapTileDirectory() {
+        return dynmapTilesDirectory;
     }
 
     public final File getExportFolder() {
@@ -235,15 +241,6 @@ public class DynmapCore implements DynmapCommonAPI {
         return dwebpPath;
     }
 
-    public final String getBiomeName(int biomeid) {
-        String n = null;
-        if ((biomeid >= 0) && (biomeid < biomenames.length)) {
-            n = biomenames[biomeid];
-        }
-        if (n == null) n = "biome" + biomeid;
-        return n;
-    }
-
     public final String[] getBiomeNames() {
         return biomenames;
     }
@@ -254,10 +251,6 @@ public class DynmapCore implements DynmapCommonAPI {
 
     public final void setTriggerDefault(String[] triggers) {
         deftriggers = triggers;
-    }
-
-    public final void setLeafTransparency(boolean trans) {
-        transparentLeaves = trans;
     }
 
     public final boolean getLeafTransparency() {
@@ -387,7 +380,8 @@ public class DynmapCore implements DynmapCommonAPI {
         configuration.load();
 
         // Read web path
-        webpath = configuration.getString("webpath", "web");
+        dynmap_web_path = configuration.getString("dynmap_web", "web");
+        serve_tiles_path = configuration.getString("serve_tiles", "web/tiles");
         // And whether to disable web file update
         updatewebpathfiles = configuration.getBoolean("update-webpath-files", true);
 
@@ -395,9 +389,9 @@ public class DynmapCore implements DynmapCommonAPI {
         isInternalWebServerDisabled = configuration.getBoolean("disable-webserver", false);
 
         /* Prime the tiles directory */
-        tilesDirectory = getFile(configuration.getString("tilespath", "web/tiles"));
-        if (!tilesDirectory.isDirectory() && !tilesDirectory.mkdirs()) {
-            Log.warning("Could not create directory for tiles ('" + tilesDirectory + "').");
+        dynmapTilesDirectory = getFile(configuration.getString("dynmap_tiles", "web/tiles"));
+        if (!dynmapTilesDirectory.isDirectory() && !dynmapTilesDirectory.mkdirs()) {
+            Log.warning("Could not create directory for tiles ('" + dynmapTilesDirectory + "').");
         }
         // Prime the exports directory
         exportDirectory = getFile(configuration.getString("exportpath", "export"));
@@ -949,7 +943,7 @@ public class DynmapCore implements DynmapCommonAPI {
                 this.setWelcomeFiles(new String[]{"index.html"});
                 this.setRedirectWelcome(false);
                 this.setDirectoriesListed(true);
-                this.setBaseResource(createFileResource(getFile(getWebPath()).getAbsolutePath()));
+                this.setBaseResource(createFileResource(getFile(dynmap_web_path).getAbsolutePath()));
             }};
             try {
                 fileResourceHandler.doStart();
@@ -1904,155 +1898,6 @@ public class DynmapCore implements DynmapCommonAPI {
         return true;
     }
 
-    /**
-     * Returns a list of tab completion suggestions for the given sender, command and command arguments.
-     *
-     * @param sender - The sender of the tab completion, used for permission checks
-     * @param cmd    - The top level command being tab completed
-     * @param args   - Array of extra command arguments
-     * @return List of tab completion suggestions
-     */
-    public List<String> getTabCompletions(DynmapCommandSender sender, String cmd, String[] args) {
-        if (mapManager == null || args.length == 0) {
-            return Collections.emptyList();
-        }
-
-        if (args.length == 1) {
-            return getSubcommandSuggestions(sender, cmd, args[0]);
-        }
-
-        if (cmd.equalsIgnoreCase("dmap")) {
-            return dmapcmds.getTabCompletions(sender, args, this);
-        }
-
-        if (cmd.equalsIgnoreCase("dmarker")) {
-            return markerapi.getTabCompletions(sender, args, this);
-        }
-
-        if (cmd.equalsIgnoreCase("dynmapexp")) {
-            return dynmapexpcmds.getTabCompletions(sender, args, this);
-        }
-
-        if (!cmd.equalsIgnoreCase("dynmap")) {
-            return Collections.emptyList();
-        }
-
-        /* Re-parse args - handle double quotes */
-        args = parseArgs(args, sender, true);
-
-        if (args == null || args.length <= 1) {
-            return Collections.emptyList();
-        }
-
-        String subcommand = args[0];
-        DynmapPlayer player = null;
-        if (sender instanceof DynmapPlayer) {
-            player = (DynmapPlayer) sender;
-        }
-
-        if (subcommand.equals("radiusrender") && checkPlayerPermission(sender, "radiusrender")) {
-            if (args.length == 2) { // /dynmap radiusrender *<world>* <x> <z> <radius> <map>
-                return getWorldSuggestions(args[1]);
-            }
-            if (args.length == 3 && player != null) { // /dynmap radiusrender <radius> *<mapname>*
-                try (Scanner sc = new Scanner(args[1])) {
-                    if (sc.hasNextInt(10)) { //Only show map suggestions if a number was entered before
-                        return getMapSuggestions(player.getLocation().world, args[2], false);
-                    }
-                }
-            } else if (args.length == 6) { // /dynmap radiusrender <world> <x> <z> <radius> *<map>*
-                return getMapSuggestions(args[1], args[5], false);
-            }
-        } else if (subcommand.equals("updaterender") && checkPlayerPermission(sender, "updaterender")) {
-            if (args.length == 2) { // /dynmap updaterender *<world>* <x> <z> <map>/*<map>*
-                List<String> suggestions = getWorldSuggestions(args[1]);
-
-                if (player != null) {
-                    suggestions.addAll(getMapSuggestions(player.getLocation().world, args[1], false));
-                }
-
-                return suggestions;
-            } else if (args.length == 5) { // /dynmap updaterender <world> <x> <z> *<map>*
-                return getMapSuggestions(args[1], args[4], false);
-            }
-        } else if (subcommand.equals("hide") && checkPlayerPermission(sender, "hide.others")) {
-            if (args.length == 2) { // /dynmap hide *<player>*
-                final String arg = args[1];
-                return playerList.getVisiblePlayers().stream()
-                        .map(DynmapPlayer::getName)
-                        .filter(name -> name.startsWith(arg))
-                        .collect(Collectors.toList());
-            }
-        } else if (subcommand.equals("show") && checkPlayerPermission(sender, "show.others")) {
-            if (args.length == 2) { // /dynmap show *<player>*
-                final String arg = args[1];
-                return playerList.getHiddenPlayers().stream()
-                        .map(DynmapPlayer::getName)
-                        .filter(name -> name.startsWith(arg))
-                        .collect(Collectors.toList());
-            }
-        } else if (subcommand.equals("fullrender") && checkPlayerPermission(sender, "fullrender")) {
-            List<String> suggestions = getWorldSuggestions(args[args.length - 1]); //World suggestions
-            suggestions.addAll(getMapSuggestions(args[args.length - 1])); //world:map suggestions
-
-            //Remove suggestions present in other arguments
-            for (String arg : args) {
-                suggestions.remove(arg.contains(" ") ? "\"" + arg + "\"" : arg);
-            }
-
-            //Add resume if previous argument wasn't resume
-            if ("resume".startsWith(args[args.length - 1])
-                    && (args.length == 2 || !args[args.length - 2].equals("resume"))) {
-                suggestions.add("resume");
-            }
-
-            return suggestions;
-        } else if ((subcommand.equals("cancelrender") && checkPlayerPermission(sender, "cancelrender"))
-                || (subcommand.equals("purgequeue") && checkPlayerPermission(sender, "purgequeue"))) {
-            List<String> suggestions = getWorldSuggestions(args[args.length - 1]);
-            suggestions.removeAll(Arrays.asList(args)); //Remove worlds present in other arguments
-
-            return suggestions;
-        } else if (subcommand.equals("purgemap") && checkPlayerPermission(sender, "purgemap")) {
-            if (args.length == 2) { // /dynmap purgemap *<world>* <map>
-                return getWorldSuggestions(args[1]);
-            } else if (args.length == 3) { // /dynmap purgemap <world> *<map>*
-                return getMapSuggestions(args[1], args[2], false);
-            }
-        } else if ((subcommand.equals("purgeworld") && checkPlayerPermission(sender, "purgeworld"))
-                || (subcommand.equals("stats") && checkPlayerPermission(sender, "stats"))
-                || (subcommand.equals("resetstats") && checkPlayerPermission(sender, "resetstats"))) {
-            if (args.length == 2) {
-                return getWorldSuggestions(args[1]);
-            }
-        } else if (subcommand.equals("pause") && checkPlayerPermission(sender, "pause")) {
-            List<String> suggestions = Arrays.asList("full", "update", "all", "none");
-
-            if (args.length == 2) {
-                final String arg = args[1];
-                return suggestions.stream().filter(suggestion -> suggestion.startsWith(arg))
-                        .collect(Collectors.toList());
-            }
-        } else if ((subcommand.equals("ips-for-id") && checkPlayerPermission(sender, "ips-for-id"))
-                || (subcommand.equals("add-id-for-ip") && checkPlayerPermission(sender, "add-id-for-ip"))
-                || (subcommand.equals("del-id-for-ip") && checkPlayerPermission(sender, "del-id-for-ip"))
-                || (subcommand.equals("webregister") && checkPlayerPermission(sender, "webregister.other"))) {
-            if (args.length == 2) {
-                final String arg = args[1];
-                return Arrays.stream(playerList.getOnlinePlayers())
-                        .map(DynmapPlayer::getName)
-                        .filter(name -> name.startsWith(arg))
-                        .collect(Collectors.toList());
-            }
-        } else if (subcommand.equals("help")) {
-            if (args.length == 2) {
-                return getSubcommandSuggestions(sender, "dynmap", args[1]);
-            }
-        }
-
-        return Collections.emptyList();
-    }
-
     public boolean checkPlayerPermission(DynmapCommandSender sender, String permission) {
         if (!(sender instanceof DynmapPlayer) || sender.isOp()) {
             return true;
@@ -2146,11 +1991,6 @@ public class DynmapCore implements DynmapCommonAPI {
             return templatesNode.getNode(templateName);
         }
         return null;
-    }
-
-
-    public String getWebPath() {
-        return webpath;
     }
 
     public static void setIgnoreChunkLoads(boolean ignore) {
@@ -2896,7 +2736,7 @@ public class DynmapCore implements DynmapCommonAPI {
         File df = this.getDataFolder();
         if (df.exists() == false) df.mkdirs();
         File ver = new File(df, "version.txt");
-        File wpath = this.getFile(this.getWebPath());
+        File wpath = this.getFile(dynmap_web_path);
         File webver = new File(wpath, "version.txt");
         String prevver = "1.6";
         String prevwebver = "1.6";

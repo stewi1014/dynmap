@@ -324,10 +324,16 @@ render-triggers:
 #webpage-title: "My Awesome Server Map"
 
 # The path where the tile-files are placed.
-tilespath: web/tiles
+#dynmap_tiles: /mnt/bulk_storage
 
-# The path where the web-files are located.
-webpath: web
+# The path where the website finds tile files.
+#serve_tiles: /mnt/bulk_storage
+
+# Where dynmap should write web files and web config.
+#dynmap_web: /mnt/remote_webserver_www_mount
+
+# Where the website should search for web files and web config.
+#serve_web: /var/www/html/minecraft
 
 # If set to false, disable extraction of webpath content (good if using custom web UI or 3rd party web UI)
 # Note: web interface is unsupported in this configuration - you're on your own

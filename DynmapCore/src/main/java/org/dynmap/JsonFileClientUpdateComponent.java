@@ -11,6 +11,7 @@ import org.json.simple.parser.ParseException;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -37,7 +38,7 @@ public class JsonFileClientUpdateComponent extends ClientUpdateComponent {
     private long last_confighash;
     private MessageDigest md;
     private MapStorage storage;
-    private File baseStandaloneDir;
+    private File web_dir;
 
     private static class FileToWrite {
         String filename;
@@ -126,10 +127,11 @@ public class JsonFileClientUpdateComponent extends ClientUpdateComponent {
         chat_perms = configuration.getBoolean("webchat-permissions", false);
         lengthlimit = configuration.getInteger("chatlengthlimit", 256);
         storage = core.getDefaultMapStorage();
-        baseStandaloneDir = new File(core.configuration.getString("webpath", "web"), "standalone");
-        if (!baseStandaloneDir.isAbsolute()) {
-            baseStandaloneDir = new File(core.getDataFolder(), baseStandaloneDir.toString());
-        }
+
+        web_dir = new File(core.configuration.getString("webpath", "web"), "standalone");
+        if (!web_dir.isAbsolute())
+            web_dir = new File(core.getDataFolder(), web_dir.toString());
+
         try {
             md = MessageDigest.getInstance("SHA-1");
         } catch (NoSuchAlgorithmException nsax) {
@@ -271,7 +273,7 @@ public class JsonFileClientUpdateComponent extends ClientUpdateComponent {
                     os.write(outputBytes);
                     core.getDefaultMapStorage().setStaticWebFile("standalone/config.js", os);
                 } else {
-                    File f = new File(baseStandaloneDir, "config.js");
+                    File f = new File(web_dir, "config.js");
                     FileOutputStream fos = null;
                     try {
                         fos = new FileOutputStream(f);

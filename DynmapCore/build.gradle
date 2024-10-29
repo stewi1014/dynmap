@@ -5,10 +5,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-static def getCommitHash() {
-    'git rev-parse --verify --short HEAD'.execute().text.trim()
-}
-
 dependencies {
     implementation project(':DynmapCoreAPI')
     implementation 'javax.servlet:javax.servlet-api:3.1'
@@ -40,7 +36,7 @@ processResources {
     ]) {
         // replace version and mcversion
         expand(
-                buildnumber: getCommitHash(),
+                buildnumber: '0',
                 version: project.version
         )
     }

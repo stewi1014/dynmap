@@ -14,6 +14,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -244,7 +245,7 @@ public class FileTreeMapStorage extends MapStorage {
         if (!super.init(core)) {
             return false;
         }
-        baseTileDir = core.getTilesFolder();
+        baseTileDir = core.getDynmapTileDirectory();
         hashmap = new TileHashManager(baseTileDir, true);
         return true;
     }
@@ -684,7 +685,7 @@ public class FileTreeMapStorage extends MapStorage {
 
     @Override
     public void addPaths(StringBuilder sb, DynmapCore core) {
-        String p = core.getTilesFolder().getAbsolutePath();
+        String p = Path.of(core.getServeTilesPath()).toAbsolutePath().toString();
         if (!p.endsWith("/"))
             p += "/";
         sb.append("$tilespath = \'");
