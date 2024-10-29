@@ -27,6 +27,7 @@ import org.dynmap.utils.BufferOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -646,7 +647,7 @@ public class AWSS3MapStorage extends MapStorage {
 
     @Override
     public void addPaths(StringBuilder sb, DynmapCore core) {
-        String p = core.getTilesFolder().getAbsolutePath();
+        String p = Path.of(core.getServeTilesPath()).toAbsolutePath().toString();
         if (!p.endsWith("/"))
             p += "/";
         sb.append("$tilespath = \'");

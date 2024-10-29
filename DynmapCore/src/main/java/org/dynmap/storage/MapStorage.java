@@ -7,6 +7,7 @@ import org.dynmap.utils.BufferOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.zip.CRC32;
@@ -40,7 +41,7 @@ public abstract class MapStorage {
      * @return true if success
      */
     public boolean init(DynmapCore core) {
-        baseStandaloneDir = new File(core.configuration.getString("webpath", "web"), "standalone");
+        baseStandaloneDir = new File(core.configuration.getString("dynmap_web", "web"), "standalone");
         if (!baseStandaloneDir.isAbsolute()) {
             baseStandaloneDir = new File(core.getDataFolder(), baseStandaloneDir.toString());
         }
@@ -251,11 +252,16 @@ public abstract class MapStorage {
      * @param core - core object
      */
     public void addPaths(StringBuilder sb, DynmapCore core) {
-        String p = core.getFile(core.getWebPath()).getAbsolutePath();
-        if (!p.endsWith("/"))
-            p += "/";
+        var path = Paths.get(core.configuration.getString("serve_web", "web"));
+        if (!path.isAbsolute())
+            path = core.getDataFolder().toPath().resolve(path);
+
+        var pathStr = path.toString();
+
+        if (!pathStr.endsWith("/"))
+            pathStr += "/";
         sb.append("$webpath = \'");
-        sb.append(WebAuthManager.esc(p));
+        sb.append(WebAuthManager.esc(pathStr));
         sb.append("\';\n");
     }
 
