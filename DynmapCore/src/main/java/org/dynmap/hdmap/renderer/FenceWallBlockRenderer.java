@@ -1,17 +1,13 @@
 package org.dynmap.hdmap.renderer;
 
+import org.dynmap.hdmap.HDBlockStateTextureMap;
+import org.dynmap.hdmap.TexturePack.BlockTransparency;
+import org.dynmap.renderer.*;
+
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
-
-import org.dynmap.hdmap.HDBlockStateTextureMap;
-import org.dynmap.hdmap.TexturePack.BlockTransparency;
-import org.dynmap.renderer.CustomRenderer;
-import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.renderer.MapDataContext;
-import org.dynmap.renderer.RenderPatch;
-import org.dynmap.renderer.RenderPatchFactory;
 
 public class FenceWallBlockRenderer extends CustomRenderer {
     private static final int TEXTURE_SIDES = 0;
@@ -30,7 +26,7 @@ public class FenceWallBlockRenderer extends CustomRenderer {
 
     // Meshes, indexed by connection combination (bit 0=X+, bit 1=X-, bit 2=Z+, bit 3=Z-, bit 4=Y+)
     private RenderPatch[][] meshes = new RenderPatch[32][];
-    
+
     private void addIDs(String bn) {
         DynmapBlockState bbs = DynmapBlockState.getBaseStateByName(bn);
         if (bbs.isNotAir()) {
@@ -40,23 +36,23 @@ public class FenceWallBlockRenderer extends CustomRenderer {
             }
         }
     }
+
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         addIDs(blkname);
         /* Build models, based on type of fence/wall we're set to be */
         String type = custparm.get("type");
-        if((type != null) && (type.equals("wall"))) {
+        if ((type != null) && (type.equals("wall"))) {
             buildWallMeshes(rpf);
             check_yplus = true;
-        }
-        else {
+        } else {
             buildFenceMeshes(rpf);
         }
-        for(int i = 0; true; i++) {
+        for (int i = 0; true; i++) {
             String lid = custparm.get("link" + i);
-            if(lid == null) break;
+            if (lid == null) break;
             addIDs(lid);
         }
         return true;
@@ -66,19 +62,19 @@ public class FenceWallBlockRenderer extends CustomRenderer {
     public int getMaximumTextureCount() {
         return 3;
     }
-    
-    private static final int[] patchlist = { TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDES, TEXTURE_SIDES, TEXTURE_SIDES, TEXTURE_SIDES };
 
-    private void addBox(RenderPatchFactory rpf, List<RenderPatch> list, double xmin, double xmax, double ymin, double ymax, double zmin, double zmax)  {
+    private static final int[] patchlist = {TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDES, TEXTURE_SIDES, TEXTURE_SIDES, TEXTURE_SIDES};
+
+    private void addBox(RenderPatchFactory rpf, List<RenderPatch> list, double xmin, double xmax, double ymin, double ymax, double zmin, double zmax) {
         addBox(rpf, list, xmin, xmax, ymin, ymax, zmin, zmax, patchlist);
     }
-    
+
     private void buildFenceMeshes(RenderPatchFactory rpf) {
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
-        for(int dat = 0; dat < 16; dat++) {
+        for (int dat = 0; dat < 16; dat++) {
             /* Add center post */
             addBox(rpf, list, 0.375, 0.625, 0.0, 1.0, 0.375, 0.625);
-            switch(dat & SIDE_X) {
+            switch (dat & SIDE_X) {
                 case SIDE_XP: // Just X+
                     addBox(rpf, list, 0.625, 1.0, 0.375, 0.5625, 0.4375, 0.5625);
                     addBox(rpf, list, 0.625, 1.0, 0.75, 0.9275, 0.4375, 0.5625);
@@ -92,7 +88,7 @@ public class FenceWallBlockRenderer extends CustomRenderer {
                     addBox(rpf, list, 0.0, 1.0, 0.75, 0.9275, 0.4375, 0.5625);
                     break;
             }
-            switch(dat & SIDE_Z) {
+            switch (dat & SIDE_Z) {
                 case SIDE_ZP: // Just Z+
                     addBox(rpf, list, 0.4375, 0.5625, 0.375, 0.5625, 0.625, 1.0);
                     addBox(rpf, list, 0.4375, 0.5625, 0.75, 0.9275, 0.625, 1.0);
@@ -113,9 +109,9 @@ public class FenceWallBlockRenderer extends CustomRenderer {
 
     private void buildWallMeshes(RenderPatchFactory rpf) {
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
-        for(int dat = 0; dat < 32; dat++) {
+        for (int dat = 0; dat < 32; dat++) {
             boolean need_post = ((dat & 0xF) == 0) || ((dat & 0x10) == 0x10);
-            switch(dat & SIDE_X) {
+            switch (dat & SIDE_X) {
                 case SIDE_XP: // Just X+
                     addBox(rpf, list, 0.75, 1.0, 0.0, 0.8125, 0.3125, 0.6875);
                     need_post = true;
@@ -128,7 +124,7 @@ public class FenceWallBlockRenderer extends CustomRenderer {
                     addBox(rpf, list, 0.0, 1.0, 0.0, 0.8125, 0.3125, 0.6875);
                     break;
             }
-            switch(dat & SIDE_Z) {
+            switch (dat & SIDE_Z) {
                 case SIDE_ZP: // Just Z+
                     addBox(rpf, list, 0.3125, 0.6875, 0.0, 0.8125, 0.75, 1.0);
                     need_post = true;
@@ -141,7 +137,7 @@ public class FenceWallBlockRenderer extends CustomRenderer {
                     addBox(rpf, list, 0.3125, 0.6875, 0.0, 0.8125, 0.0, 1.0);
                     break;
             }
-            if(need_post) {
+            if (need_post) {
                 addBox(rpf, list, 0.25, 0.75, 0.0, 1.0, 0.25, 0.75);
             }
             meshes[dat] = list.toArray(new RenderPatch[list.size()]);
@@ -150,28 +146,28 @@ public class FenceWallBlockRenderer extends CustomRenderer {
     }
 
     private static int[][] sides = {
-        { 1, 0, 0, SIDE_XP },
-        { -1, 0, 0, SIDE_XN },
-        { 0, 0, 1, SIDE_ZP },
-        { 0, 0, -1, SIDE_ZN }
+            {1, 0, 0, SIDE_XP},
+            {-1, 0, 0, SIDE_XN},
+            {0, 0, 1, SIDE_ZP},
+            {0, 0, -1, SIDE_ZN}
     };
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         /* Build connection map - check each axis */
         int connect = 0;
-        for(int i = 0; i < sides.length; i++) {
+        for (int i = 0; i < sides.length; i++) {
             DynmapBlockState blk = ctx.getBlockTypeAt(sides[i][0], sides[i][1], sides[i][2]);
             if (blk.isAir()) continue;
             if (link_ids.get(blk.globalStateIndex) || (HDBlockStateTextureMap.getTransparency(blk) == BlockTransparency.OPAQUE)) {
                 connect |= sides[i][3];
             }
         }
-        if(check_yplus) {
+        if (check_yplus) {
             if (ctx.getBlockTypeAt(0, 1, 0).isNotAir()) {
                 connect |= SIDE_YP;
             }
         }
         return meshes[connect];
-    }    
+    }
 }

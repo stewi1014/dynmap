@@ -8,7 +8,7 @@ public class ClientUpdateEvent {
     public JSONObject update;
     public String user;
     public boolean include_all_users;
-    
+
     public ClientUpdateEvent(long timestamp, DynmapWorld world, JSONObject update) {
         this.timestamp = timestamp;
         this.world = world;

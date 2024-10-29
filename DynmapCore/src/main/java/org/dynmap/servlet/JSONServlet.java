@@ -1,11 +1,10 @@
 package org.dynmap.servlet;
 
-import java.io.IOException;
-import java.io.PrintWriter;
+import org.json.simple.JSONStreamAware;
 
 import javax.servlet.http.HttpServletResponse;
-
-import org.json.simple.JSONStreamAware;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 public class JSONServlet {
     public static void respond(HttpServletResponse response, JSONStreamAware json) throws IOException {

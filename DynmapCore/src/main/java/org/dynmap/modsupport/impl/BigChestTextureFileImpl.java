@@ -8,7 +8,7 @@ public class BigChestTextureFileImpl extends TextureFileImpl implements BigChest
     public BigChestTextureFileImpl(String id, String filename) {
         super(id, filename, TextureFileType.BIGCHEST, 10, 1);
     }
-    
+
     public String getLine() {
         String s = super.getLine();
         s += ",format=BIGCHEST";

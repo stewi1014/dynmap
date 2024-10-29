@@ -1,15 +1,6 @@
 package org.dynmap.hdmap;
 
-import static org.dynmap.JSONUtils.s;
-
-import java.io.IOException;
-import java.util.ArrayList;
-
-import org.dynmap.Color;
-import org.dynmap.ConfigurationNode;
-import org.dynmap.DynmapCore;
-import org.dynmap.Log;
-import org.dynmap.MapManager;
+import org.dynmap.*;
 import org.dynmap.common.DynmapCommandSender;
 import org.dynmap.exporter.OBJExport;
 import org.dynmap.renderer.DynmapBlockState;
@@ -18,6 +9,11 @@ import org.dynmap.utils.DynLongHashMap;
 import org.dynmap.utils.MapChunkCache;
 import org.dynmap.utils.MapIterator;
 import org.json.simple.JSONObject;
+
+import java.io.IOException;
+import java.util.ArrayList;
+
+import static org.dynmap.JSONUtils.s;
 
 // Shader for color coding by chunk data version
 public class ChunkVersionHDShader implements HDShader {

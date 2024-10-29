@@ -14,20 +14,23 @@ public class IndexedVector3DList {
     public interface ListCallback {
         public void elementAdded(IndexedVector3DList list, IndexedVector3D newElement);
     }
+
     private ListCallback callback;  // Callback for new elements added to list
-    
+
     public IndexedVector3DList(ListCallback cb) {
         callback = cb;
     }
+
     /**
      * Reset set of vectors: does NOT reset index values (need to be global)
      */
     public void resetSet() {
         set.clear();    // Drop all of them
     }
+
     /**
      * Reset vectors within given range (assume no longer needed) - does not reset index
-     * 
+     *
      * @param minx - minimum X (inclusive)
      * @param miny - minimum Y (inclusive)
      * @param minz - minimum Z (inclusive)
@@ -45,9 +48,10 @@ public class IndexedVector3DList {
             }
         }
     }
-    
+
     /**
      * Get index of given vector
+     *
      * @param x - x value
      * @param y - y value
      * @param z - z value

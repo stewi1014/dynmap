@@ -1,26 +1,26 @@
 package org.dynmap.hdmap.renderer;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Map;
-
 import org.dynmap.renderer.CustomRenderer;
 import org.dynmap.renderer.MapDataContext;
 import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Map;
+
 /*
  * Vine renderer for v1.13+
  */
 public class VineStateRenderer extends CustomRenderer {
-    
+
     // Meshes, indexed by state index (bit4=east, bit3=north, bit2=south, bit1=up, bit0=west)
     protected RenderPatch[][] meshes = new RenderPatch[32][];
-    
+
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         buildPatches(rpf);
         return true;
@@ -43,17 +43,19 @@ public class VineStateRenderer extends CustomRenderer {
             meshes[i] = list.toArray(new RenderPatch[list.size()]);
         }
     }
+
     @Override
     public int getMaximumTextureCount() {
         return 2;
     }
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext ctx) {
         return meshes[ctx.getBlockType().stateIndex];
-    }    
+    }
+
     @Override
     public boolean isOnlyBlockStateSensitive() {
-    	return true;
+        return true;
     }
 }

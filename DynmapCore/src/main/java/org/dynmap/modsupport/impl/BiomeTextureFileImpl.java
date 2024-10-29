@@ -8,6 +8,7 @@ public class BiomeTextureFileImpl extends TextureFileImpl implements BiomeTextur
     public BiomeTextureFileImpl(String id, String filename) {
         super(id, filename, TextureFileType.BIOME, 1, 1);
     }
+
     public String getLine() {
         String s = super.getLine();
         s += ",format=BIOME";

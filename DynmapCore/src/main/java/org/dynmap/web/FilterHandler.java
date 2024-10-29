@@ -19,33 +19,33 @@ public class FilterHandler extends AbstractHandler {
 
     public FilterHandler() {
     }
-    
+
     public FilterHandler(Handler handler, Iterable<Filter> filters) {
         this.handler = handler;
-        for(Filter f : filters) {
+        for (Filter f : filters) {
             try {
                 FilterHolder holder = new FilterHolder(f);
                 holder.start();
                 holder.initialize();
                 this.filters.add(holder);
-            }catch (Exception e){
-                Log.severe("Failed to initialize filter holder: "+e.toString());
+            } catch (Exception e) {
+                Log.severe("Failed to initialize filter holder: " + e.toString());
             }
         }
     }
-    
+
     public Handler getHandler() {
         return handler;
     }
-    
+
     public void setHandler(Handler handler) {
         this.handler = handler;
     }
-    
+
     public Iterable<FilterHolder> getFilters() {
         return filters;
     }
-    
+
     public void addFilter(Filter filter) {
         filters.add(new FilterHolder(filter));
     }

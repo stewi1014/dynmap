@@ -1,8 +1,8 @@
 {
-    "pack": {
-        "description": {
-           "text": "Dynmap resources"
-        },
-        "pack_format": 22
-    }
+  "pack": {
+    "description": {
+      "text": "Dynmap resources"
+    },
+    "pack_format": 22
+  }
 }

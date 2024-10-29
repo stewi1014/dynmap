@@ -1,14 +1,14 @@
 package org.dynmap.hdmap;
 
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Map;
-
 import org.dynmap.Log;
 import org.dynmap.hdmap.TexturePack.BlockTransparency;
 import org.dynmap.hdmap.TexturePack.ColorizingData;
 import org.dynmap.renderer.CustomColorMultiplier;
 import org.dynmap.renderer.DynmapBlockState;
+
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Map;
 
 public class HDBlockStateTextureMap {
 
@@ -24,18 +24,19 @@ public class HDBlockStateTextureMap {
     final BlockTransparency trans;
 
     public static final HDBlockStateTextureMap BLANK = new HDBlockStateTextureMap();
-    
+
     // Default to a blank mapping
     HDBlockStateTextureMap() {
         blockset = null;
         colorMult = 0;
         custColorMult = null;
-        faces = new int[] { TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK };
+        faces = new int[]{TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK, TexturePack.TILEINDEX_BLANK};
         layers = null;
         stdrotate = true;
         colorMapping = null;
         trans = BlockTransparency.TRANSPARENT;
     }
+
     // Create block state map with given attributes
     public HDBlockStateTextureMap(int[] faces, byte[] layers, int colorMult, CustomColorMultiplier custColorMult, String blockset, boolean stdrot, Integer colorIndex, BlockTransparency trans) {
         this.faces = faces;
@@ -47,7 +48,7 @@ public class HDBlockStateTextureMap {
         this.colorMapping = colorIndex;
         this.trans = trans;
     }
-    
+
     // Shallow copy state from another state map
     public HDBlockStateTextureMap(HDBlockStateTextureMap map, BlockTransparency bt) {
         this.faces = map.faces;
@@ -73,49 +74,48 @@ public class HDBlockStateTextureMap {
     public void resizeFaces(int cnt) {
         int[] newfaces = new int[cnt];
         System.arraycopy(faces, 0, newfaces, 0, faces.length);
-        for(int i = faces.length; i < cnt; i++) {
+        for (int i = faces.length; i < cnt; i++) {
             newfaces[i] = TexturePack.TILEINDEX_BLANK;
         }
         faces = newfaces;
     }
-    
+
     // Add block state to table, with given block IDs and state indexes
     public void addToTable(Map<DynmapBlockState, BitSet> states) {
         /* Add entries to lookup table */
         for (DynmapBlockState baseblk : states.keySet()) {
             if (baseblk.isNotAir()) {
-            	BitSet stateidx = states.get(baseblk);
-            	for (int stateid = stateidx.nextSetBit(0); stateid >= 0; stateid = stateidx.nextSetBit(stateid+1)) {
+                BitSet stateidx = states.get(baseblk);
+                for (int stateid = stateidx.nextSetBit(0); stateid >= 0; stateid = stateidx.nextSetBit(stateid + 1)) {
                     DynmapBlockState bs = baseblk.getState(stateid);
                     if (bs.isAir()) {
-                    	Log.warning("Invalid texture block state: " + baseblk.blockName + ":" + stateid);
-                    	continue;
+                        Log.warning("Invalid texture block state: " + baseblk.blockName + ":" + stateid);
+                        continue;
                     }
                     if ((this.blockset != null) && (this.blockset.equals("core") == false)) {
                         HDBlockModels.resetIfNotBlockSet(bs, this.blockset);
                     }
                     copyToStateIndex(bs, this, null);
                 }
-            }
-            else {
-            	Log.warning("Invalid texture block name: " + baseblk.blockName);
+            } else {
+                Log.warning("Invalid texture block name: " + baseblk.blockName);
             }
         }
     }
 
     private static final void resize(int newend) {
-        if (newend < texmaps.length) return; 
-        HDBlockStateTextureMap[] newm = new HDBlockStateTextureMap[newend+1];
-        System.arraycopy(texmaps,  0,  newm,  0,  texmaps.length);
+        if (newend < texmaps.length) return;
+        HDBlockStateTextureMap[] newm = new HDBlockStateTextureMap[newend + 1];
+        System.arraycopy(texmaps, 0, newm, 0, texmaps.length);
         Arrays.fill(newm, texmaps.length, newm.length, HDBlockStateTextureMap.BLANK);
         texmaps = newm;
     }
-    
+
     // Initialize/reset block texture table
     public static void initializeTable() {
-    	Arrays.fill(texmaps, HDBlockStateTextureMap.BLANK);
+        Arrays.fill(texmaps, HDBlockStateTextureMap.BLANK);
     }
-    
+
     // Lookup records by block state
     public static final HDBlockStateTextureMap getByBlockState(DynmapBlockState blk) {
         HDBlockStateTextureMap m = HDBlockStateTextureMap.BLANK;
@@ -126,18 +126,20 @@ public class HDBlockStateTextureMap {
         }
         return m;
     }
+
     // Copy given block state to given state index
     public static void copyToStateIndex(DynmapBlockState blk, HDBlockStateTextureMap map, TexturePack.BlockTransparency trans) {
-    	resize(blk.globalStateIndex);
-    	if (trans == null) {
-    		trans = map.trans;
-    	}
+        resize(blk.globalStateIndex);
+        if (trans == null) {
+            trans = map.trans;
+        }
         // Force waterloogged blocks to use SEMITRANSPARENT (same as water)
         if ((trans == TexturePack.BlockTransparency.TRANSPARENT) && blk.isWaterlogged()) {
             trans = TexturePack.BlockTransparency.SEMITRANSPARENT;
         }
         texmaps[blk.globalStateIndex] = new HDBlockStateTextureMap(map, trans);
     }
+
     // Copy textures from source block ID to destination
     public static void remapTexture(String dest, String src) {
         DynmapBlockState dblk = DynmapBlockState.getBaseStateByName(dest);
@@ -149,6 +151,7 @@ public class HDBlockStateTextureMap {
             texmaps[didx] = new HDBlockStateTextureMap(texmaps[sidx], null);
         }
     }
+
     // Get by global state index
     public static HDBlockStateTextureMap getByGlobalIndex(int gidx) {
         HDBlockStateTextureMap m = HDBlockStateTextureMap.BLANK;
@@ -159,10 +162,12 @@ public class HDBlockStateTextureMap {
         }
         return m;
     }
+
     // Get state by index
     public final HDBlockStateTextureMap getStateMap(DynmapBlockState blk, int stateid) {
-    	return getByGlobalIndex(blk.getState(stateid).globalStateIndex);
+        return getByGlobalIndex(blk.getState(stateid).globalStateIndex);
     }
+
     // Get transparency for given block ID
     public static BlockTransparency getTransparency(DynmapBlockState blk) {
         BlockTransparency trans = BlockTransparency.OPAQUE;
@@ -173,6 +178,7 @@ public class HDBlockStateTextureMap {
         }
         return trans;
     }
+
     // Build copy of block colorization data
     public static ColorizingData getColorizingData() {
         ColorizingData map = new ColorizingData();

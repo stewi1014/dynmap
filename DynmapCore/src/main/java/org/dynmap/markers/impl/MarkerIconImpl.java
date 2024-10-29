@@ -1,18 +1,18 @@
 package org.dynmap.markers.impl;
 
+import org.dynmap.ConfigurationNode;
+import org.dynmap.markers.MarkerIcon;
+
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.dynmap.ConfigurationNode;
-import org.dynmap.markers.MarkerIcon;
 
 class MarkerIconImpl implements MarkerIcon {
     private String iconid;
     private String label;
     private boolean is_builtin;
     private MarkerSize size = MarkerSize.MARKER_16x16;
-    
+
     MarkerIconImpl(String id) {
         iconid = id;
         label = id;
@@ -21,7 +21,7 @@ class MarkerIconImpl implements MarkerIcon {
 
     MarkerIconImpl(String id, String lbl, boolean is_builtin) {
         iconid = id;
-        if(lbl != null)
+        if (lbl != null)
             label = lbl;
         else
             label = id;
@@ -29,9 +29,9 @@ class MarkerIconImpl implements MarkerIcon {
     }
 
     void cleanup() {
-        
+
     }
-    
+
     @Override
     public String getMarkerIconID() {
         return iconid;
@@ -44,16 +44,16 @@ class MarkerIconImpl implements MarkerIcon {
 
     @Override
     public void setMarkerIconLabel(String lbl) {
-        if(lbl == null) lbl = iconid;
-        if(label.equals(lbl) == false) {
+        if (lbl == null) lbl = iconid;
+        if (label.equals(lbl) == false) {
             label = lbl;
             MarkerAPIImpl.saveMarkers();
         }
     }
-    
+
     @Override
     public void setMarkerIconImage(InputStream in) {
-        if(MarkerAPIImpl.api.loadMarkerIconStream(this.iconid, in))
+        if (MarkerAPIImpl.api.loadMarkerIconStream(this.iconid, in))
             MarkerAPIImpl.api.publishMarkerIcon(this);
     }
 
@@ -69,12 +69,13 @@ class MarkerIconImpl implements MarkerIcon {
 
     /**
      * Get configuration node to be saved
+     *
      * @return node
      */
     Map<String, Object> getPersistentData() {
-        if(is_builtin)
+        if (is_builtin)
             return null;
-        
+
         HashMap<String, Object> node = new HashMap<String, Object>();
         node.put("label", label);
 
@@ -82,9 +83,9 @@ class MarkerIconImpl implements MarkerIcon {
     }
 
     boolean loadPersistentData(ConfigurationNode node, boolean isSafe) {
-        if(is_builtin)
+        if (is_builtin)
             return false;
-        
+
         label = node.getString("label", iconid);
 
         return true;
@@ -94,7 +95,7 @@ class MarkerIconImpl implements MarkerIcon {
     public MarkerSize getMarkerIconSize() {
         return size;
     }
-    
+
     void setMarkerIconSize(MarkerSize sz) {
         size = sz;
     }

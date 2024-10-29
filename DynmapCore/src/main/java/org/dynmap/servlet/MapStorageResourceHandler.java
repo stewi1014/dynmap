@@ -16,19 +16,18 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 
 public class MapStorageResourceHandler extends AbstractHandler {
 
     private DynmapCore core;
     private byte[] blankpng;
     private long blankpnghash = 0x12345678;
-    
+
     public MapStorageResourceHandler() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         BufferedImage blank = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
@@ -37,16 +36,17 @@ public class MapStorageResourceHandler extends AbstractHandler {
             blankpng = baos.toByteArray();
         } catch (IOException e) {
         }
-        
+
     }
+
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         String path = baseRequest.getPathInfo();
         int soff = 0, eoff;
         // We're handling this request
         baseRequest.setHandled(true);
-        if(core.getLoginRequired()
-            && request.getSession(true).getAttribute(LoginServlet.USERID_ATTRIB) == null){
+        if (core.getLoginRequired()
+                && request.getSession(true).getAttribute(LoginServlet.USERID_ATTRIB) == null) {
             response.sendError(HttpStatus.UNAUTHORIZED_401);
             return;
         }
@@ -57,7 +57,7 @@ public class MapStorageResourceHandler extends AbstractHandler {
             return;
         }
         String world = path.substring(soff, eoff);
-        String uri = path.substring(eoff+1);
+        String uri = path.substring(eoff + 1);
         // If faces directory, handle faces
         if (world.equals("faces")) {
             handleFace(response, uri);
@@ -98,16 +98,15 @@ public class MapStorageResourceHandler extends AbstractHandler {
         response.setHeader("Cache-Control", "max-age=0,must-revalidate");
         String etag;
         if (tr == null) {
-        	etag = "\"" + blankpnghash + "\"";
-        }
-        else {
-        	etag = "\"" + tr.hashCode + "\"";
+            etag = "\"" + blankpnghash + "\"";
+        } else {
+            etag = "\"" + tr.hashCode + "\"";
         }
         response.setHeader("ETag", etag);
         String ifnullmatch = request.getHeader("If-None-Match");
         if ((ifnullmatch != null) && ifnullmatch.equals(etag)) {
             response.sendError(HttpStatus.NOT_MODIFIED_304);
-        	return;
+            return;
         }
         if (tr == null) {
             response.setContentType("image/png");
@@ -166,8 +165,8 @@ public class MapStorageResourceHandler extends AbstractHandler {
             return;
         }
         // If png, make marker ID
-        if (suri[suri.length-1].endsWith(".png")) {
-            BufferInputStream bis = core.getDefaultMapStorage().getMarkerImage(uri.substring(0, uri.length()-4));
+        if (suri[suri.length - 1].endsWith(".png")) {
+            BufferInputStream bis = core.getDefaultMapStorage().getMarkerImage(uri.substring(0, uri.length() - 4));
             // Got image, package up for response
             response.setIntHeader("Content-Length", bis.length());
             response.setContentType("image/png");

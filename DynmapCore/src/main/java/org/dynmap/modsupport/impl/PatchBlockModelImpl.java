@@ -1,17 +1,18 @@
 package org.dynmap.modsupport.impl;
 
-import java.util.ArrayList;
-
 import org.dynmap.modsupport.PatchBlockModel;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
 
+import java.util.ArrayList;
+
 public class PatchBlockModelImpl extends BlockModelImpl implements PatchBlockModel {
     private ArrayList<String> patches = new ArrayList<String>();
-    
+
     @Deprecated
     public PatchBlockModelImpl(int blkid, ModModelDefinitionImpl mdf) {
         super(blkid, mdf);
     }
+
     public PatchBlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         super(blkname, mdf);
     }
@@ -27,6 +28,7 @@ public class PatchBlockModelImpl extends BlockModelImpl implements PatchBlockMod
             }
         }
     }
+
     public PatchBlockModelImpl(String blkname, ModModelDefinitionImpl mdf, PatchBlockModel mod, int xrot, int yrot, int zrot) {
         super(blkname, mdf);
         PatchBlockModelImpl m = (PatchBlockModelImpl) mod;
@@ -40,32 +42,32 @@ public class PatchBlockModelImpl extends BlockModelImpl implements PatchBlockMod
 
     @Override
     public String addPatch(double x0, double y0, double z0, double xu, double yu,
-            double zu, double xv, double yv, double zv, double umin,
-            double umax, double vmin, double vminatumax, double vmax, double vmaxatumax,
-            SideVisible sidevis) {
+                           double zu, double xv, double yv, double zv, double umin,
+                           double umax, double vmin, double vminatumax, double vmax, double vmaxatumax,
+                           SideVisible sidevis) {
         String pi = mdf.getPatchID(x0, y0, z0, xu, yu, zu, xv, yv, zv, umin, umax, vmin, vminatumax, vmax, vmaxatumax, sidevis);
         patches.add(pi);
         return pi;
     }
-    
+
     @Override
     @Deprecated
     public String addPatch(double x0, double y0, double z0, double xu, double yu,
-            double zu, double xv, double yv, double zv, double umin,
-            double umax, double vmin, double vmax, double uplusvmax,
-            SideVisible sidevis) {
+                           double zu, double xv, double yv, double zv, double umin,
+                           double umax, double vmin, double vmax, double uplusvmax,
+                           SideVisible sidevis) {
         return addPatch(x0, y0, z0, xu, yu, zu, xv, yv, zv, umin, umax, vmin, vmin, vmax, ((uplusvmax - umax) < vmax) ? uplusvmax - umax : vmax, sidevis);
     }
 
-	@Override
-	public String addPatch(double x0, double y0, double z0, double xu, double yu, double zu, double xv, double yv,
-			double zv, SideVisible sidevis) {
+    @Override
+    public String addPatch(double x0, double y0, double z0, double xu, double yu, double zu, double xv, double yv,
+                           double zv, SideVisible sidevis) {
         return addPatch(x0, y0, z0, xu, yu, zu, xv, yv, zv, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, sidevis);
-	}
+    }
 
     @Override
     public String addPatch(double x0, double y0, double z0, double xu, double yu,
-            double zu, double xv, double yv, double zv) {
+                           double zu, double xv, double yv, double zv) {
         return addPatch(x0, y0, z0, xu, yu, zu, xv, yv, zv, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, SideVisible.BOTH);
     }
 

@@ -1,15 +1,15 @@
 package org.dynmap.common;
 
+import org.dynmap.hdmap.HDBlockModels;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.dynmap.hdmap.HDBlockModels;
-
 /* Generic biome mapping */
 public class BiomeMap {
-	public static final int NO_INDEX = -2;
+    public static final int NO_INDEX = -2;
     private static BiomeMap[] biome_by_index = new BiomeMap[256];
     private static Map<String, BiomeMap> biome_by_rl = new HashMap<String, BiomeMap>();
     public static final BiomeMap NULL = new BiomeMap(-1, "NULL", 0.5, 0.5, 0xFFFFFF, 0, 0, null);
@@ -39,7 +39,7 @@ public class BiomeMap {
     public static final BiomeMap JUNGLE_HILLS = new BiomeMap(22, "JUNGLE_HILLS", 1.2, 0.9, "minecraft:jungle_hills");
 
     public static final int LAST_WELL_KNOWN = 175;
-    
+
     private double tmp;
     private double rain;
     private int watercolormult;
@@ -51,9 +51,9 @@ public class BiomeMap {
     private final int index;
     private int biomeindex256; // Standard biome mapping index (for 256 x 256)
     private boolean isDef;
-    
+
     private static boolean loadDone = false;
-    
+
     public static void loadWellKnownByVersion(String mcver) {
         if (loadDone) return;
         if (HDBlockModels.checkVersionRange(mcver, "1.7.0-")) {
@@ -89,14 +89,14 @@ public class BiomeMap {
             new BiomeMap(162, "EXTREME_HILLS_PLUS_MOUNTAINS", 0.2, 0.3, "minecraft:modified_gravelly_mountains");
             new BiomeMap(163, "SAVANNA_MOUNTAINS", 1.2, 0.0, "minecraft:shattered_savanna");
             new BiomeMap(164, "SAVANNA_PLATEAU_MOUNTAINS", 1.0, 0.0, "minecraft:shattered_savanna_plateau");
-            new BiomeMap(165, "MESA_BRYCE", 2.0, 0.0,0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:eroded_badlands");
+            new BiomeMap(165, "MESA_BRYCE", 2.0, 0.0, 0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:eroded_badlands");
         }
         if (HDBlockModels.checkVersionRange(mcver, "1.7.0-1.17.1")) {
             new BiomeMap(38, "MESA_PLATEAU_FOREST", 2.0, 0.0, 0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:wooded_badlands_plateau");
             new BiomeMap(39, "MESA_PLATEAU", 2.0, 0.0, 0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:badlands_plateau");
             new BiomeMap(134, "SWAMPLAND_MOUNTAINS", 0.8, 0.9, 0xE0FFAE, 0x2e282a, 0x902c52, "minecraft:swamp_hills");
-            new BiomeMap(166, "MESA_PLATEAU_FOREST_MOUNTAINS", 2.0, 0.0,0xFFFFFF, 0x624c46, 0x8e5e70,  "minecraft:modified_wooded_badlands_plateau");
-            new BiomeMap(167, "MESA_PLATEAU_MOUNTAINS", 2.0, 0.0,0xFFFFFF, 0x624c46, 0x8e5e70,  "minecraft:modified_badlands_plateau");
+            new BiomeMap(166, "MESA_PLATEAU_FOREST_MOUNTAINS", 2.0, 0.0, 0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:modified_wooded_badlands_plateau");
+            new BiomeMap(167, "MESA_PLATEAU_MOUNTAINS", 2.0, 0.0, 0xFFFFFF, 0x624c46, 0x8e5e70, "minecraft:modified_badlands_plateau");
         }
         if (HDBlockModels.checkVersionRange(mcver, "1.9.0-")) {
             new BiomeMap(127, "THE_VOID", "minecraft:the_void");
@@ -109,7 +109,7 @@ public class BiomeMap {
             new BiomeMap(44, "WARM_OCEAN", "minecraft:warm_ocean");
             new BiomeMap(45, "LUKEWARM_OCEAN", "minecraft:lukewarm_ocean");
             new BiomeMap(46, "COLD_OCEAN", "minecraft:cold_ocean");
-            new BiomeMap(47, "DEEP_WARM_OCEAN",  "minecraft:deep_warm_ocean");
+            new BiomeMap(47, "DEEP_WARM_OCEAN", "minecraft:deep_warm_ocean");
             new BiomeMap(48, "DEEP_LUKEWARM_OCEAN", "minecraft:deep_lukewarm_ocean");
             new BiomeMap(49, "DEEP_COLD_OCEAN", "minecraft:deep_cold_ocean");
             new BiomeMap(50, "DEEP_FROZEN_OCEAN", "minecraft:deep_frozen_ocean");
@@ -133,39 +133,39 @@ public class BiomeMap {
         }
         loadDone = true;
     }
-    
+
     static {
         for (int i = 0; i < biome_by_index.length; i++) {
-            BiomeMap bm = BiomeMap.byBiomeID(i-1);
+            BiomeMap bm = BiomeMap.byBiomeID(i - 1);
             if (bm == null) {
-                bm = new BiomeMap(i-1, "BIOME_" + (i-1));
+                bm = new BiomeMap(i - 1, "BIOME_" + (i - 1));
                 bm.isDef = true;
             }
         }
     }
 
     private static boolean isUniqueID(String id) {
-        for(int i = 0; i < biome_by_index.length; i++) {
-            if(biome_by_index[i] == null) continue;
-            if(biome_by_index[i].id.equals(id))
+        for (int i = 0; i < biome_by_index.length; i++) {
+            if (biome_by_index[i] == null) continue;
+            if (biome_by_index[i].id.equals(id))
                 return false;
         }
         return true;
     }
-    
+
     private static void resizeIfNeeded(int idx) {
-		if ((idx >= biome_by_index.length) ) {
-			int oldlen = biome_by_index.length;
-			biome_by_index = Arrays.copyOf(biome_by_index, idx * 3 / 2);
-			for (int i = oldlen; i < biome_by_index.length; i++) {
-				if (biome_by_index[i] == null) {
-	                BiomeMap bm = new BiomeMap(i-1, "BIOME_" + (i-1));
-	                bm.isDef = true;
-				}
-			}
-		}    	
+        if ((idx >= biome_by_index.length)) {
+            int oldlen = biome_by_index.length;
+            biome_by_index = Arrays.copyOf(biome_by_index, idx * 3 / 2);
+            for (int i = oldlen; i < biome_by_index.length; i++) {
+                if (biome_by_index[i] == null) {
+                    BiomeMap bm = new BiomeMap(i - 1, "BIOME_" + (i - 1));
+                    bm.isDef = true;
+                }
+            }
+        }
     }
-    
+
     private BiomeMap(int idx, String id, double tmp, double rain, int waterColorMultiplier, int grassmult, int foliagemult, String rl) {
         /* Clamp values : we use raw values from MC code, which are clamped during color mapping only */
         setTemperature(tmp);
@@ -174,7 +174,9 @@ public class BiomeMap {
         this.grassmult = grassmult;
         this.foliagemult = foliagemult;
         // Handle null biome
-        if (id == null) { id = "biome_" + idx; }
+        if (id == null) {
+            id = "biome_" + idx;
+        }
         id = id.toUpperCase().replace(' ', '_');
         if (isUniqueID(id) == false) {
             id = id + "_" + idx;
@@ -182,35 +184,36 @@ public class BiomeMap {
         this.id = id;
         // If index is NO_INDEX, find one after the well known ones
         if (idx == NO_INDEX) {
-        	idx = LAST_WELL_KNOWN;
-        	while (true) {
-           		idx++;
-           		resizeIfNeeded(idx);
-        		if (biome_by_index[idx].isDef) {
-        			break;
-        		}
-        	}
-        }
-        else {
-        	idx++;  /* Insert one after ID value - null is zero index */
+            idx = LAST_WELL_KNOWN;
+            while (true) {
+                idx++;
+                resizeIfNeeded(idx);
+                if (biome_by_index[idx].isDef) {
+                    break;
+                }
+            }
+        } else {
+            idx++;  /* Insert one after ID value - null is zero index */
         }
         this.index = idx;
         if (idx >= 0) {
-        	resizeIfNeeded(idx);
-        	biome_by_index[idx] = this;
+            resizeIfNeeded(idx);
+            biome_by_index[idx] = this;
         }
         this.resourcelocation = rl;
         if (rl != null) {
-        	biome_by_rl.put(rl, this);
+            biome_by_rl.put(rl, this);
         }
     }
+
     public BiomeMap(int idx, String id) {
         this(idx, id, 0.5, 0.5, 0xFFFFFF, 0, 0, null);
     }
+
     public BiomeMap(int idx, String id, String rl) {
         this(idx, id, 0.5, 0.5, 0xFFFFFF, 0, 0, rl);
     }
-    
+
     public BiomeMap(int idx, String id, double tmp, double rain) {
         this(idx, id, tmp, rain, 0xFFFFFF, 0, 0, null);
     }
@@ -220,99 +223,117 @@ public class BiomeMap {
     }
 
     public BiomeMap(String id, double tmp, double rain, String rl) {
-        this(NO_INDEX, id, tmp, rain, 0xFFFFFF, 0, 0, rl);	// No index
+        this(NO_INDEX, id, tmp, rain, 0xFFFFFF, 0, 0, rl);    // No index
     }
 
     private final int biomeLookup(int width) {
-        int w = width-1;
-        int t = (int)((1.0-tmp)*w);
-        int h = (int)((1.0 - (tmp*rain))*w);
-        return width*h + t;
+        int w = width - 1;
+        int t = (int) ((1.0 - tmp) * w);
+        int h = (int) ((1.0 - (tmp * rain)) * w);
+        return width * h + t;
     }
 
     public final int biomeLookup() {
         return this.biomeindex256;
     }
-    
+
     public final int getModifiedGrassMultiplier(int rawgrassmult) {
-        if(grassmult == 0)
+        if (grassmult == 0)
             return rawgrassmult;
-        else if(grassmult > 0xFFFFFF)
+        else if (grassmult > 0xFFFFFF)
             return grassmult & 0xFFFFFF;
         else
             return ((rawgrassmult & 0xfefefe) + grassmult) / 2;
     }
-    
+
     public final int getModifiedFoliageMultiplier(int rawfoliagemult) {
-        if(foliagemult == 0)
+        if (foliagemult == 0)
             return rawfoliagemult;
-        else if(foliagemult > 0xFFFFFF)
+        else if (foliagemult > 0xFFFFFF)
             return foliagemult & 0xFFFFFF;
         else
             return ((rawfoliagemult & 0xfefefe) + foliagemult) / 2;
     }
+
     public final int getWaterColorMult() {
         return watercolormult;
     }
+
     public final int ordinal() {
         return index;
     }
+
     public static final BiomeMap byBiomeID(int idx) {
         idx++;
-        if((idx >= 0) && (idx < biome_by_index.length))
+        if ((idx >= 0) && (idx < biome_by_index.length))
             return biome_by_index[idx];
         else
             return NULL;
     }
+
     public static final BiomeMap byBiomeResourceLocation(String resloc) {
         BiomeMap b = biome_by_rl.get(resloc);
         return (b != null) ? b : NULL;
     }
+
     public int getBiomeID() {
         return index - 1;   // Index of biome in MC biome table
     }
+
     public static final BiomeMap[] values() {
         return biome_by_index;
     }
+
     public void setWaterColorMultiplier(int watercolormult) {
         this.watercolormult = watercolormult;
     }
+
     public void setGrassColorMultiplier(int grassmult) {
         this.grassmult = grassmult;
     }
+
     public void setFoliageColorMultiplier(int foliagemult) {
         this.foliagemult = foliagemult;
     }
+
     public void setTemperature(double tmp) {
-        if(tmp < 0.0) tmp = 0.0;
-        if(tmp > 1.0) tmp = 1.0;
+        if (tmp < 0.0) tmp = 0.0;
+        if (tmp > 1.0) tmp = 1.0;
         this.tmp = tmp;
         this.biomeindex256 = this.biomeLookup(256);
     }
+
     public void setRainfall(double rain) {
-        if(rain < 0.0) rain = 0.0;
-        if(rain > 1.0) rain = 1.0;
+        if (rain < 0.0) rain = 0.0;
+        if (rain > 1.0) rain = 1.0;
         this.rain = rain;
         this.biomeindex256 = this.biomeLookup(256);
     }
+
     public final double getTemperature() {
         return this.tmp;
     }
+
     public final double getRainfall() {
         return this.rain;
     }
+
     public boolean isDefault() {
         return isDef;
     }
+
     public String getId() {
         return id;
     }
+
     public String toString() {
-    	return String.format("%s(%s)", id, resourcelocation);
+        return String.format("%s(%s)", id, resourcelocation);
     }
+
     public @SuppressWarnings("unchecked") <T> Optional<T> getBiomeObject() {
         return (Optional<T>) biomeObj;
     }
+
     public void setBiomeObject(Object biomeObj) {
         this.biomeObj = Optional.of(biomeObj);
     }

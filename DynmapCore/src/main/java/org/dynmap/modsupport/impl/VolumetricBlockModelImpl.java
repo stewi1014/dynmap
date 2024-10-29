@@ -5,7 +5,7 @@ import org.dynmap.modsupport.VolumetricBlockModel;
 @Deprecated
 public class VolumetricBlockModelImpl extends BlockModelImpl implements VolumetricBlockModel {
     private boolean[][][] grid;
-    
+
     public VolumetricBlockModelImpl(int blkid, ModModelDefinitionImpl mdf, int scale) {
         super(blkid, mdf);
         grid = new boolean[scale][][];
@@ -16,6 +16,7 @@ public class VolumetricBlockModelImpl extends BlockModelImpl implements Volumetr
             }
         }
     }
+
     public VolumetricBlockModelImpl(String blkname, ModModelDefinitionImpl mdf, int scale) {
         super(blkname, mdf);
         grid = new boolean[scale][][];
@@ -26,6 +27,7 @@ public class VolumetricBlockModelImpl extends BlockModelImpl implements Volumetr
             }
         }
     }
+
     @Override
     public void setSubBlockToFilled(int x, int y, int z) {
         if ((x >= 0) && (x < grid.length) && (y >= 0) && (y < grid.length) && (z >= 0) && (z < grid.length)) {
@@ -53,8 +55,7 @@ public class VolumetricBlockModelImpl extends BlockModelImpl implements Volumetr
                     if (grid[x][y][z]) {
                         empty = false;
                         l += '*';
-                    }
-                    else {
+                    } else {
                         l += '-';
                     }
                 }

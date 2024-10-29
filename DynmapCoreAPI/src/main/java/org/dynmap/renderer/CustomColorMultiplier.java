@@ -9,15 +9,18 @@ public abstract class CustomColorMultiplier {
      */
     protected CustomColorMultiplier() {
     }
+
     /**
      * Cleanup custom color multiplier
-     * 
+     * <p>
      * If overridden, super.cleanupColorMultiplier() should be called
      */
     public void cleanupColorMultiplier() {
     }
+
     /**
      * Compute color multiplier for current block, given context
+     *
      * @param mapDataCtx - Map data context: can be used to read any data available for map.
      * @return color multiplier (0xRRGGBB)
      */

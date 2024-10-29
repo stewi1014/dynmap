@@ -8,7 +8,7 @@ public class ShulkerTextureFileImpl extends TextureFileImpl implements ShulkerTe
     public ShulkerTextureFileImpl(String id, String filename) {
         super(id, filename, TextureFileType.SHULKER, 6, 1);
     }
-    
+
     public String getLine() {
         String s = super.getLine();
         s += ",format=SHULKER";

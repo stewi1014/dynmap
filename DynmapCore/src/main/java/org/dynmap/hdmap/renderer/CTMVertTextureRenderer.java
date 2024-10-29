@@ -1,14 +1,10 @@
 package org.dynmap.hdmap.renderer;
 
+import org.dynmap.renderer.*;
+
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Map;
-
-import org.dynmap.renderer.CustomRenderer;
-import org.dynmap.renderer.DynmapBlockState;
-import org.dynmap.renderer.MapDataContext;
-import org.dynmap.renderer.RenderPatch;
-import org.dynmap.renderer.RenderPatchFactory;
 
 public class CTMVertTextureRenderer extends CustomRenderer {
     private static final int TEXTURE_BOTTOM = 0;
@@ -25,25 +21,25 @@ public class CTMVertTextureRenderer extends CustomRenderer {
     private RenderPatch[] mesh_both_neighbor;
 
     @Override
-    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String,String> custparm) {
-        if(!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
+    public boolean initializeRenderer(RenderPatchFactory rpf, String blkname, BitSet blockdatamask, Map<String, String> custparm) {
+        if (!super.initializeRenderer(rpf, blkname, blockdatamask, custparm))
             return false;
         blk = DynmapBlockState.getBaseStateByName(blkname);
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
         /* Build no neighbors patches */
-        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[] { TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR });
+        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[]{TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR, TEXTURE_SIDE_NO_NEIGHBOR});
         mesh_no_neighbor = list.toArray(new RenderPatch[6]);
         /* Build above neighbor patches */
         list.clear();
-        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[] { TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE });
+        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[]{TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE, TEXTURE_SIDE_ABOVE});
         mesh_above_neighbor = list.toArray(new RenderPatch[6]);
         /* Build below neighbor patches */
         list.clear();
-        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[] { TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW });
+        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[]{TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW, TEXTURE_SIDE_BELOW});
         mesh_below_neighbor = list.toArray(new RenderPatch[6]);
         /* Build both neighbor patches */
         list.clear();
-        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[] { TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH });
+        addBox(rpf, list, 0, 1, 0, 1, 0, 1, new int[]{TEXTURE_BOTTOM, TEXTURE_TOP, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH, TEXTURE_SIDE_BOTH});
         mesh_both_neighbor = list.toArray(new RenderPatch[6]);
 
         return true;
@@ -54,13 +50,13 @@ public class CTMVertTextureRenderer extends CustomRenderer {
         return 6;
     }
 
-    
+
     @Override
     public RenderPatch[] getRenderPatchList(MapDataContext mapDataCtx) {
         DynmapBlockState bs = mapDataCtx.getBlockType();
         int meta = bs.stateIndex;
         boolean above = false;
-        DynmapBlockState id_above = mapDataCtx.getBlockTypeAt(0,  1,  0);
+        DynmapBlockState id_above = mapDataCtx.getBlockTypeAt(0, 1, 0);
         if (id_above.baseState == blk) {    /* MIght match */
             int id_meta = id_above.stateIndex;
             if (meta == id_meta) {
@@ -68,7 +64,7 @@ public class CTMVertTextureRenderer extends CustomRenderer {
             }
         }
         boolean below = false;
-        DynmapBlockState id_below = mapDataCtx.getBlockTypeAt(0,  -1,  0);
+        DynmapBlockState id_below = mapDataCtx.getBlockTypeAt(0, -1, 0);
         if (id_below.baseState == blk) {    /* MIght match */
             int id_meta = id_below.stateIndex;
             if (meta == id_meta) {
@@ -79,16 +75,13 @@ public class CTMVertTextureRenderer extends CustomRenderer {
         if (above) {
             if (below) {
                 mesh = this.mesh_both_neighbor;
-            }
-            else {
+            } else {
                 mesh = this.mesh_above_neighbor;
             }
-        }
-        else {
+        } else {
             if (below) {
                 mesh = this.mesh_below_neighbor;
-            }
-            else {
+            } else {
                 mesh = this.mesh_no_neighbor;
             }
         }

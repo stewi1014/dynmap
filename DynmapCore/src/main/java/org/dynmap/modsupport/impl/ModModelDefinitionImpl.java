@@ -1,32 +1,16 @@
 package org.dynmap.modsupport.impl;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-
 import org.dynmap.hdmap.HDBlockModels;
-import org.dynmap.modsupport.BlockSide;
-import org.dynmap.modsupport.BoxBlockModel;
-import org.dynmap.modsupport.CuboidBlockModel;
-import org.dynmap.modsupport.DoorBlockModel;
-import org.dynmap.modsupport.ModModelDefinition;
-import org.dynmap.modsupport.ModTextureDefinition;
-import org.dynmap.modsupport.ModelBlockModel;
-import org.dynmap.modsupport.PaneBlockModel;
-import org.dynmap.modsupport.PatchBlockModel;
-import org.dynmap.modsupport.PlantBlockModel;
-import org.dynmap.modsupport.StairBlockModel;
-import org.dynmap.modsupport.VolumetricBlockModel;
-import org.dynmap.modsupport.WallFenceBlockModel;
+import org.dynmap.modsupport.*;
 import org.dynmap.modsupport.WallFenceBlockModel.FenceType;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
 import org.dynmap.utils.PatchDefinition;
 import org.dynmap.utils.PatchDefinitionFactory;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 
 @SuppressWarnings("deprecation")
 public class ModModelDefinitionImpl implements ModModelDefinition {
@@ -36,12 +20,12 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
     private ArrayList<PatchDefinition> blkPatch = new ArrayList<PatchDefinition>();
     private LinkedHashMap<String, PatchDefinition> blkPatchMap = new LinkedHashMap<String, PatchDefinition>();
     private PatchDefinitionFactory pdf;
-    
+
     public ModModelDefinitionImpl(ModTextureDefinitionImpl txtDef) {
         this.txtDef = txtDef;
         this.pdf = HDBlockModels.getPatchDefinitionFactory();
     }
-    
+
     @Override
     public String getModID() {
         return txtDef.getModID();
@@ -70,6 +54,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return null;
     }
+
     @Override
     @Deprecated
     public VolumetricBlockModel addVolumetricModel(String blockname, int scale) {
@@ -85,6 +70,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public StairBlockModel addStairModel(String blockname) {
         StairBlockModelImpl mod = new StairBlockModelImpl(blockname, this);
@@ -99,6 +85,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public WallFenceBlockModel addWallFenceModel(String blockname, FenceType type) {
         WallFenceBlockModelImpl mod = new WallFenceBlockModelImpl(blockname, this, type);
@@ -128,6 +115,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public PaneBlockModel addPaneModel(String blockname) {
         PaneBlockModelImpl mod = new PaneBlockModelImpl(blockname, this);
@@ -142,6 +130,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public PlantBlockModel addPlantModel(String blockname) {
         PlantBlockModelImpl mod = new PlantBlockModelImpl(blockname, this);
@@ -156,6 +145,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public BoxBlockModel addBoxModel(String blockname) {
         BoxBlockModelImpl mod = new BoxBlockModelImpl(blockname, this);
@@ -170,13 +160,14 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public DoorBlockModel addDoorModel(String blockname) {
         DoorBlockModelImpl mod = new DoorBlockModelImpl(blockname, this);
         blkModel.add(mod);
         return mod;
     }
-    
+
     @Override
     @Deprecated
     public PatchBlockModel addPatchModel(int blockid) {
@@ -184,6 +175,7 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public PatchBlockModel addPatchModel(String blockname) {
         PatchBlockModelImpl mod = new PatchBlockModelImpl(blockname, this);
@@ -194,35 +186,36 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
     @Override
     @Deprecated
     public PatchBlockModel addRotatedPatchModel(int blockid,
-        PatchBlockModel model, int xrot, int yrot, int zrot) {
+                                                PatchBlockModel model, int xrot, int yrot, int zrot) {
         PatchBlockModelImpl mod = new PatchBlockModelImpl(blockid, this, model, xrot, yrot, zrot);
         blkModel.add(mod);
         return mod;
     }
+
     @Override
     public PatchBlockModel addRotatedPatchModel(String blockname,
-        PatchBlockModel model, int xrot, int yrot, int zrot) {
+                                                PatchBlockModel model, int xrot, int yrot, int zrot) {
         PatchBlockModelImpl mod = new PatchBlockModelImpl(blockname, this, model, xrot, yrot, zrot);
         blkModel.add(mod);
         return mod;
     }
-    
+
     @Override
     public ModelBlockModel addModelBlockModel(String blockname) {
         ModelBlockModelImpl mod = new ModelBlockModelImpl(blockname, this);
         blkModel.add(mod);
-        return mod;    	
+        return mod;
     }
 
     public String getPatchID(double x0, double y0, double z0, double xu,
-            double yu, double zu, double xv, double yv, double zv, double umin,
-            double umax, double vmin, double vminatumax, double vmax, double vmaxatumax, SideVisible sidevis) {
+                             double yu, double zu, double xv, double yv, double zv, double umin,
+                             double umax, double vmin, double vminatumax, double vmax, double vmaxatumax, SideVisible sidevis) {
         PatchDefinition pd = pdf.getPatch(x0, y0, z0, xu, yu, zu, xv, yv, zv, umin, umax, vmin, vminatumax, vmax, vmaxatumax, sidevis, 0);
         if (pd == null)
             return null;    // Invalid patch
         for (int i = 0; i < blkPatch.size(); i++) {
-            if (blkPatch.get(i) == pd) { 
-                return "patch" + i; 
+            if (blkPatch.get(i) == pd) {
+                return "patch" + i;
             }
         }
         blkPatch.add(pd);
@@ -230,20 +223,20 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         blkPatchMap.put(id, pd);
         return id;
     }
-    
+
     public String getModelFacePatchID(double[] from, double[] to, BlockSide face, double[] uv, ModelBlockModel.SideRotation rot, boolean shade, int textureid) {
         PatchDefinition pd = pdf.getModelFace(from, to, face, uv, rot, shade, textureid);
         if (pd == null)
             return null;    // Invalid patch
         for (int i = 0; i < blkPatch.size(); i++) {
-            if (blkPatch.get(i) == pd) { 
-                return "patch" + i; 
+            if (blkPatch.get(i) == pd) {
+                return "patch" + i;
             }
         }
         blkPatch.add(pd);
         String id = "patch" + (blkPatch.size() - 1);
         blkPatchMap.put(id, pd);
-        return id;    	
+        return id;
     }
 
     public String getRotatedPatchID(String patchid, int xrot, int yrot, int zrot) {
@@ -254,8 +247,8 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
         PatchDefinition newpd = (PatchDefinition) pdf.getRotatedPatch(pd, xrot, yrot, zrot, 0);
         if (newpd != null) {
             for (int i = 0; i < blkPatch.size(); i++) {
-                if (blkPatch.get(i) == newpd) { 
-                    return "patch" + i; 
+                if (blkPatch.get(i) == newpd) {
+                    return "patch" + i;
                 }
             }
             blkPatch.add(newpd);
@@ -323,8 +316,8 @@ public class ModModelDefinitionImpl implements ModModelDefinition {
             }
         } finally {
             if (fw != null) {
-                fw.close(); 
+                fw.close();
             }
-        }        
+        }
     }
 }

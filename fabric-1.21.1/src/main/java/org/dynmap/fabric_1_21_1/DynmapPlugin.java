@@ -12,9 +12,9 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.FluidBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
-import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -132,13 +132,13 @@ public class DynmapPlugin {
         int baseidx = 0;
 
         Iterator<BlockState> iter = bsids.iterator();
-    	DynmapBlockState.Builder bld = new DynmapBlockState.Builder();
+        DynmapBlockState.Builder bld = new DynmapBlockState.Builder();
         while (iter.hasNext()) {
             BlockState bs = iter.next();
             int idx = bsids.getRawId(bs);
             if (idx >= stateByID.length) {
                 int plen = stateByID.length;
-    			stateByID = Arrays.copyOf(stateByID, idx*11/10); // grow array by 10%    			
+                stateByID = Arrays.copyOf(stateByID, idx * 11 / 10); // grow array by 10%
                 Arrays.fill(stateByID, plen, stateByID.length, DynmapBlockState.AIR);
             }
             Block b = bs.getBlock();
@@ -167,17 +167,29 @@ public class DynmapPlugin {
                 //Log.info("statename=" + bn + "[" + statename + "], lightAtten=" + lightAtten);
                 // Fill in base attributes
                 bld.setBaseState(basebs).setStateIndex(idx - baseidx).setBlockName(bn).setStateName(statename).setLegacyBlockID(idx).setAttenuatesLight(lightAtten);
-                if (bs.getSoundGroup() != null) { bld.setMaterial(bs.getSoundGroup().toString()); }
-				if (bs.isSolid()) { bld.setSolid(); }
-				if (bs.isAir()) { bld.setAir(); }
-				if (bs.isIn(BlockTags.LOGS)) { bld.setLog(); }
-				if (bs.isIn(BlockTags.LEAVES)) { bld.setLeaves(); }
-				if ((!bs.getFluidState().isEmpty()) && !(bs.getBlock() instanceof FluidBlock)) {
-					bld.setWaterlogged();
-				}
+                if (bs.getSoundGroup() != null) {
+                    bld.setMaterial(bs.getSoundGroup().toString());
+                }
+                if (bs.isSolid()) {
+                    bld.setSolid();
+                }
+                if (bs.isAir()) {
+                    bld.setAir();
+                }
+                if (bs.isIn(BlockTags.LOGS)) {
+                    bld.setLog();
+                }
+                if (bs.isIn(BlockTags.LEAVES)) {
+                    bld.setLeaves();
+                }
+                if ((!bs.getFluidState().isEmpty()) && !(bs.getBlock() instanceof FluidBlock)) {
+                    bld.setWaterlogged();
+                }
                 DynmapBlockState dbs = bld.build(); // Build state
                 stateByID[idx] = dbs;
-                if (basebs == null) { basebs = dbs; }
+                if (basebs == null) {
+                    basebs = dbs;
+                }
             }
         }
 //        for (int gidx = 0; gidx < DynmapBlockState.getGlobalIndexMax(); gidx++) {
@@ -339,18 +351,16 @@ public class DynmapPlugin {
                 Log.verboseinfo("biome[" + i + "]: hum=" + hum + ", tmp=" + tmp + ", mult=" + Integer.toHexString(watermult));
 
                 BiomeMap bmap = BiomeMap.NULL;
-                if (rl != null) {	// If resource location, lookup by this
-                	bmap = BiomeMap.byBiomeResourceLocation(rl);
-                }
-                else {
-                	bmap = BiomeMap.byBiomeID(i);
+                if (rl != null) {    // If resource location, lookup by this
+                    bmap = BiomeMap.byBiomeResourceLocation(rl);
+                } else {
+                    bmap = BiomeMap.byBiomeID(i);
                 }
                 if (bmap.isDefault() || (bmap == BiomeMap.NULL)) {
                     bmap = new BiomeMap((rl != null) ? BiomeMap.NO_INDEX : i, id, tmp, hum, rl);
                     Log.verboseinfo("Add custom biome [" + bmap.toString() + "] (" + i + ")");
                     cnt++;
-                }
-                else {
+                } else {
                     bmap.setTemperature(tmp);
                     bmap.setRainfall(hum);
                 }
@@ -391,8 +401,7 @@ public class DynmapPlugin {
         if (FabricLoader.getInstance().isModLoaded("luckperms")) {
             Log.info("Using luckperms for access control");
             permissions = new LuckPermissions();
-        }
-        else if (FabricLoader.getInstance().isModLoaded("fabric-permissions-api-v0")) {
+        } else if (FabricLoader.getInstance().isModLoaded("fabric-permissions-api-v0")) {
             Log.info("Using fabric-permissions-api for access control");
             permissions = new FabricPermissions();
         } else {
@@ -630,14 +639,14 @@ public class DynmapPlugin {
             FabricWorld fw = getWorld(world, false);
             ChunkPos chunkPos = chunk.getPos();
 
-			int ymax = Integer.MIN_VALUE;
-			int ymin = Integer.MAX_VALUE;
+            int ymax = Integer.MIN_VALUE;
+            int ymin = Integer.MAX_VALUE;
             ChunkSection[] sections = chunk.getSectionArray();
             for (int i = 0; i < sections.length; i++) {
                 if ((sections[i] != null) && (!sections[i].isEmpty())) {
-					int sy = chunk.getBottomY() + i * ChunkSection.field_31407 /* Mojmap: SECTION_HEIGHT */;
-					if (sy < ymin) ymin = sy;
-					if ((sy+16) > ymax) ymax = sy + 16;
+                    int sy = chunk.getBottomY() + i * ChunkSection.field_31407 /* Mojmap: SECTION_HEIGHT */;
+                    if (sy < ymin) ymin = sy;
+                    if ((sy + 16) > ymax) ymax = sy + 16;
                 }
             }
             if (ymax != Integer.MIN_VALUE) {

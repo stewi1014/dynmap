@@ -1,41 +1,25 @@
 package org.dynmap.exporter;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
 import org.dynmap.DynmapChunk;
 import org.dynmap.DynmapCore;
 import org.dynmap.DynmapWorld;
 import org.dynmap.common.DynmapCommandSender;
-import org.dynmap.hdmap.CustomBlockModel;
-import org.dynmap.hdmap.HDBlockModels;
-import org.dynmap.hdmap.HDBlockStateTextureMap;
-import org.dynmap.hdmap.HDScaledBlockModels;
-import org.dynmap.hdmap.HDShader;
+import org.dynmap.hdmap.*;
 import org.dynmap.hdmap.TexturePack.BlockTransparency;
 import org.dynmap.renderer.CustomRenderer;
 import org.dynmap.renderer.DynmapBlockState;
 import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
-import org.dynmap.utils.BlockStep;
-import org.dynmap.utils.IndexedVector3D;
-import org.dynmap.utils.IndexedVector3DList;
-import org.dynmap.utils.MapChunkCache;
-import org.dynmap.utils.MapIterator;
-import org.dynmap.utils.PatchDefinition;
-import org.dynmap.utils.PatchDefinitionFactory;
+import org.dynmap.utils.*;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class OBJExport {
     private final File destZipFile;     // Destination ZIP file
@@ -52,16 +36,16 @@ public class OBJExport {
     private boolean centerOrigin = true;    // Center at origin
     private PatchDefinition[] defaultPathces;   // Default patches for solid block, indexed by BlockStep.ordinal()
     private HashSet<String> matIDs = new HashSet<String>();     // Set of defined material ids for RP
-    
+
     private static class Face {
         String groupLine;
         String faceLine;
     }
-    
+
     private HashMap<String, List<Face>> facesByTexture = new HashMap<String, List<Face>>();
     private static final int MODELSCALE = 16;
     private static final double BLKSIZE = 1.0 / (double) MODELSCALE;
-    
+
     // Index of group settings
     public static final int GROUP_CHUNK = 0;
     public static final int GROUP_TEXTURE = 1;
@@ -71,35 +55,36 @@ public class OBJExport {
     private String[] group = new String[GROUP_COUNT];
     private boolean[] enabledGroups = new boolean[GROUP_COUNT];
     private String groupline = null;
-    
+
     // Vertex set
     private IndexedVector3DList vertices;
     // UV set
     private IndexedVector3DList uvs;
     // Scaled models
     private HDScaledBlockModels models;
-    
+
     public static final int ROT0 = 0;
     public static final int ROT90 = 1;
     public static final int ROT180 = 2;
     public static final int ROT270 = 3;
     public static final int HFLIP = 4;
-    
+
     private static final double[][] pp = {
-        { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
-        { 0, 1, 1, 1, 1, 1, 0, 1, 0 },
-        { 1, 0, 0, 0, 0, 0, 1, 1, 0 },
-        { 0, 0, 1, 1, 0, 1, 0, 1, 1 },
-        { 0, 0, 0, 0, 0, 1, 0, 1, 0 },
-        { 1, 0, 1, 1, 0, 0, 1, 1, 1 }
+            {0, 0, 0, 1, 0, 0, 0, 0, 1},
+            {0, 1, 1, 1, 1, 1, 0, 1, 0},
+            {1, 0, 0, 0, 0, 0, 1, 1, 0},
+            {0, 0, 1, 1, 0, 1, 0, 1, 1},
+            {0, 0, 0, 0, 0, 1, 0, 1, 0},
+            {1, 0, 1, 1, 0, 0, 1, 1, 1}
     };
-    
+
     /**
      * Constructor for OBJ file export
-     * @param dest - destination file (ZIP)
-     * @param shader - shader to be used for coloring/texturing
-     * @param world - world to be rendered
-     * @param core - core object
+     *
+     * @param dest     - destination file (ZIP)
+     * @param shader   - shader to be used for coloring/texturing
+     * @param world    - world to be rendered
+     * @param core     - core object
      * @param basename - base file name
      */
     public OBJExport(File dest, HDShader shader, DynmapWorld world, DynmapCore core, String basename) {
@@ -120,11 +105,11 @@ public class OBJExport {
             public void elementAdded(IndexedVector3DList list, IndexedVector3D newElement) {
                 try {
                     /* Minecraft XYZ maps to OBJ YZX */
-                    addStringToExportedFile(String.format(Locale.US, "v %.4f %.4f %.4f\n", 
+                    addStringToExportedFile(String.format(Locale.US, "v %.4f %.4f %.4f\n",
                             (newElement.x - originX) * scale,
                             (newElement.y - originY) * scale,
                             (newElement.z - originZ) * scale
-                            ));
+                    ));
                 } catch (IOException iox) {
                 }
             }
@@ -141,9 +126,10 @@ public class OBJExport {
         // Get models
         models = HDBlockModels.getModelsForScale(MODELSCALE);
     }
+
     /**
      * Set render bounds
-     * 
+     *
      * @param minx - minimum X coord
      * @param miny - minimum Y coord
      * @param minz - minimum Z coord
@@ -153,22 +139,25 @@ public class OBJExport {
      */
     public void setRenderBounds(int minx, int miny, int minz, int maxx, int maxy, int maxz) {
         if (minx < maxx) {
-            minX = minx; maxX = maxx;
-        }
-        else {
-            minX = maxx; maxX = minx;
+            minX = minx;
+            maxX = maxx;
+        } else {
+            minX = maxx;
+            maxX = minx;
         }
         if (miny < maxy) {
-            minY = miny; maxY = maxy;
-        }
-        else {
-            minY = maxy; maxY = miny;
+            minY = miny;
+            maxY = maxy;
+        } else {
+            minY = maxy;
+            maxY = miny;
         }
         if (minz < maxz) {
-            minZ = minz; maxZ = maxz;
-        }
-        else {
-            minZ = maxz; maxZ = minz;
+            minZ = minz;
+            maxZ = maxz;
+        } else {
+            minZ = maxz;
+            maxZ = minz;
         }
         if (minY < world.minY) minY = world.minY;
         if (maxY >= world.worldheight) maxY = world.worldheight - 1;
@@ -178,8 +167,10 @@ public class OBJExport {
             originZ = (maxZ + minZ) / 2.0;
         }
     }
+
     /**
      * Set origin for exported model
+     *
      * @param ox - origin x
      * @param oy - origin y
      * @param oz - origin z
@@ -190,16 +181,19 @@ public class OBJExport {
         originZ = oz;
         centerOrigin = false;
     }
+
     /**
      * Set scale for exported model
+     *
      * @param scale = scale
      */
     public void setScale(double scale) {
         this.scale = scale;
     }
+
     /**
      * Process export
-     * 
+     *
      * @param sender - command sender: use for feedback messages
      * @return true if successful, false if not
      */
@@ -208,7 +202,7 @@ public class OBJExport {
         try {
             // Open ZIP file destination
             zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(destZipFile)));
-            
+
             List<DynmapChunk> requiredChunks = new ArrayList<DynmapChunk>();
             int mincx = (minX >> 4);
             int maxcx = (maxX + 15) >> 4;
@@ -227,7 +221,7 @@ public class OBJExport {
                     requiredChunks.clear();
                     for (int i = -1; i < 5; i++) {
                         for (int j = -1; j < 5; j++) {
-                            if (((cx+i) <= maxcx) && ((cz+j) <= maxcz) && ((cx+i) >= mincx) && ((cz+j) >= mincz)) {
+                            if (((cx + i) <= maxcx) && ((cz + j) <= maxcz) && ((cx + i) >= mincx) && ((cz + j) >= mincz)) {
                                 requiredChunks.add(new DynmapChunk(cx + i, cz + j));
                             }
                         }
@@ -278,7 +272,7 @@ public class OBJExport {
                     for (String material : facesByTexture.keySet()) {
                         List<Face> faces = facesByTexture.get(material);
                         matIDs.add(material);   // Record material use
-                        addStringToExportedFile(String.format("usemtl %s\n", material)); 
+                        addStringToExportedFile(String.format("usemtl %s\n", material));
                         for (Face face : faces) {
                             if ((face.groupLine != null) && (!face.groupLine.equals(grp))) {
                                 grp = face.groupLine;
@@ -310,15 +304,20 @@ public class OBJExport {
             sender.sendMessage("Export failed: " + iox.getMessage());
         } finally {
             if (zos != null) {
-                try { zos.close(); } catch (IOException e) {}
+                try {
+                    zos.close();
+                } catch (IOException e) {
+                }
                 zos = null;
                 destZipFile.delete();
             }
         }
         return good;
     }
+
     /**
      * Start adding file to export
+     *
      * @param fname - path/name of file in destination zip
      * @throws IOException if error starting file
      */
@@ -326,8 +325,10 @@ public class OBJExport {
         ZipEntry ze = new ZipEntry(fname);
         zos.putNextEntry(ze);
     }
+
     /**
      * Add bytes to current exported file
+     *
      * @param buf - buffer with bytes
      * @param off - offset of start
      * @param len - length to be added
@@ -336,8 +337,10 @@ public class OBJExport {
     public void addBytesToExportedFile(byte[] buf, int off, int len) throws IOException {
         zos.write(buf, off, len);
     }
+
     /**
      * Add string to curent exported file (UTF-8)
+     *
      * @param str - string to be written
      * @throws IOException if error adding to file
      */
@@ -345,17 +348,21 @@ public class OBJExport {
         byte[] b = str.getBytes(UTF8);
         zos.write(b, 0, b.length);
     }
+
     /**
      * Finish adding file to export
+     *
      * @throws IOException if error completing file
      */
     public void finishExportedFile() throws IOException {
         zos.closeEntry();
     }
+
     /**
      * Handle block at current iterator coord
-     * @param id - block ID
-     * @param iter - iterator
+     *
+     * @param id       - block ID
+     * @param iter     - iterator
      * @param edgebits - bit N corresponds to side N being an endge (forge render)
      */
     private void handleBlock(DynmapBlockState blk, MapIterator map, boolean[] edgebits) throws IOException {
@@ -364,10 +371,10 @@ public class OBJExport {
         // See if the block has a patch model
         RenderPatch[] patches = models.getPatchModel(blk);
         /* If no patches, see if custom model */
-        if(patches == null) {
+        if (patches == null) {
             CustomBlockModel cbm = models.getCustomBlockModel(blk);
             if (cbm != null) {   /* If so, get our meshes */
-        		patches = cbm.getMeshForBlock(map);
+                patches = cbm.getMeshForBlock(map);
             }
         }
         if (patches != null) {
@@ -377,8 +384,7 @@ public class OBJExport {
                 txtidx[i] = ((PatchDefinition) patches[i]).getTextureIndex();
                 steps[i] = ((PatchDefinition) patches[i]).step;
             }
-        }
-        else {  // See if volumetric
+        } else {  // See if volumetric
             short[] smod = models.getScaledModel(blk);
             if (smod != null) {
                 patches = getScaledModelAsPatches(smod);
@@ -397,13 +403,12 @@ public class OBJExport {
 
         // Get materials for patches
         String[] mats = shader.getCurrentBlockMaterials(blk, map, txtidx, steps);
-        
+
         if (patches != null) {  // Patch based model?
             for (int i = 0; i < patches.length; i++) {
                 addPatch((PatchDefinition) patches[i], map.getX(), map.getY(), map.getZ(), mats[i]);
             }
-        }
-        else {
+        } else {
             boolean opaque = HDBlockStateTextureMap.getTransparency(blk) == BlockTransparency.OPAQUE;
             for (int face = 0; face < 6; face++) {
                 DynmapBlockState blk2 = map.getBlockTypeAt(BlockStep.oppositeValues[face]);  // Get block in direction
@@ -414,6 +419,7 @@ public class OBJExport {
             }
         }
     }
+
     private int[] getTextureUVs(PatchDefinition pd, int rot) {
         int[] uv = new int[4];
         if (rot == ROT0) {
@@ -421,32 +427,27 @@ public class OBJExport {
             uv[1] = uvs.getVectorIndex(pd.umax, pd.vmin, 0);
             uv[2] = uvs.getVectorIndex(pd.umax, pd.vmax, 0);
             uv[3] = uvs.getVectorIndex(pd.umin, pd.vmax, 0);
-        }
-        else if (rot == ROT90) {    // 90 degrees on texture
+        } else if (rot == ROT90) {    // 90 degrees on texture
             uv[0] = uvs.getVectorIndex(1.0 - pd.vmin, pd.umin, 0);
             uv[1] = uvs.getVectorIndex(1.0 - pd.vmin, pd.umax, 0);
             uv[2] = uvs.getVectorIndex(1.0 - pd.vmax, pd.umax, 0);
             uv[3] = uvs.getVectorIndex(1.0 - pd.vmax, pd.umin, 0);
-        }
-        else if (rot == ROT180) {    // 180 degrees on texture
+        } else if (rot == ROT180) {    // 180 degrees on texture
             uv[0] = uvs.getVectorIndex(1.0 - pd.umin, 1.0 - pd.vmin, 0);
             uv[1] = uvs.getVectorIndex(1.0 - pd.umax, 1.0 - pd.vmin, 0);
             uv[2] = uvs.getVectorIndex(1.0 - pd.umax, 1.0 - pd.vmax, 0);
             uv[3] = uvs.getVectorIndex(1.0 - pd.umin, 1.0 - pd.vmax, 0);
-        }
-        else if (rot == ROT270) {    // 270 degrees on texture
+        } else if (rot == ROT270) {    // 270 degrees on texture
             uv[0] = uvs.getVectorIndex(pd.vmin, 1.0 - pd.umin, 0);
             uv[1] = uvs.getVectorIndex(pd.vmin, 1.0 - pd.umax, 0);
             uv[2] = uvs.getVectorIndex(pd.vmax, 1.0 - pd.umax, 0);
             uv[3] = uvs.getVectorIndex(pd.vmax, 1.0 - pd.umin, 0);
-        }
-        else if (rot == HFLIP) {
+        } else if (rot == HFLIP) {
             uv[0] = uvs.getVectorIndex(1.0 - pd.umin, pd.vmin, 0);
             uv[1] = uvs.getVectorIndex(1.0 - pd.umax, pd.vmin, 0);
             uv[2] = uvs.getVectorIndex(1.0 - pd.umax, pd.vmax, 0);
             uv[3] = uvs.getVectorIndex(1.0 - pd.umin, pd.vmax, 0);
-        }
-        else {
+        } else {
             uv[0] = uvs.getVectorIndex(pd.umin, pd.vmin, 0);
             uv[1] = uvs.getVectorIndex(pd.umax, pd.vmin, 0);
             uv[2] = uvs.getVectorIndex(pd.umax, pd.vmax, 0);
@@ -454,6 +455,7 @@ public class OBJExport {
         }
         return uv;
     }
+
     /**
      * Add patch as face to output
      */
@@ -465,7 +467,7 @@ public class OBJExport {
         int rot = 0;
         int rotidx = material.indexOf('@'); // Check for rotation modifier
         if (rotidx >= 0) {
-            rot = material.charAt(rotidx+1) - '0';  // 0-3
+            rot = material.charAt(rotidx + 1) - '0';  // 0-3
             material = material.substring(0, rotidx);
         }
         int[] v = new int[4];
@@ -482,20 +484,21 @@ public class OBJExport {
         y = y + pd.y0;
         z = z + pd.z0;
         // Origin corner, offset by umin, vmin
-        v[0] = vertices.getVectorIndex(x + ux*pd.umin + vx*pd.vmin, y + uy*pd.umin + vy*pd.vmin, z + uz*pd.umin + vz*pd.vmin);
+        v[0] = vertices.getVectorIndex(x + ux * pd.umin + vx * pd.vmin, y + uy * pd.umin + vy * pd.vmin, z + uz * pd.umin + vz * pd.vmin);
         uv[0] = uvs.getVectorIndex(pd.umin, pd.vmin, 0);
         // Second is end of U (umax, vmin)
-        v[1] = vertices.getVectorIndex(x + ux*pd.umax + vx*pd.vmin, y + uy*pd.umax + vy*pd.vmin, z + uz*pd.umax + vz*pd.vmin);
+        v[1] = vertices.getVectorIndex(x + ux * pd.umax + vx * pd.vmin, y + uy * pd.umax + vy * pd.vmin, z + uz * pd.umax + vz * pd.vmin);
         uv[1] = uvs.getVectorIndex(pd.umax, pd.vmin, 0);
         // Third is end of U+V (umax, vmax)
-        v[2] = vertices.getVectorIndex(x + ux*pd.umax + vx*pd.vmax, y + uy*pd.umax + vy*pd.vmax, z + uz*pd.umax + vz*pd.vmax);
+        v[2] = vertices.getVectorIndex(x + ux * pd.umax + vx * pd.vmax, y + uy * pd.umax + vy * pd.vmax, z + uz * pd.umax + vz * pd.vmax);
         uv[2] = uvs.getVectorIndex(pd.umax, pd.vmax, 0);
         // Forth is end of V (umin, vmax)
-        v[3] = vertices.getVectorIndex(x + ux*pd.umin + vx*pd.vmax, y + uy*pd.umin + vy*pd.vmax, z + uz*pd.umin + vz*pd.vmax);
+        v[3] = vertices.getVectorIndex(x + ux * pd.umin + vx * pd.vmax, y + uy * pd.umin + vy * pd.vmax, z + uz * pd.umin + vz * pd.vmax);
         uv[3] = uvs.getVectorIndex(pd.umin, pd.vmax, 0);
         // Add patch to file
         addPatchToFile(v, uv, pd.sidevis, material, rot);
     }
+
     private void addPatchToFile(int[] v, int[] uv, SideVisible sv, String material, int rot) throws IOException {
         List<Face> faces = facesByTexture.get(material);
         if (faces == null) {
@@ -509,11 +512,10 @@ public class OBJExport {
                 newuv[i] = uv[i ^ 1];
             }
             uv = newuv;
-        }
-        else if (rot != ROT0) {
+        } else if (rot != ROT0) {
             int newuv[] = new int[uv.length];
             for (int i = 0; i < uv.length; i++) {
-                newuv[i] = uv[(i+4-rot) % uv.length];
+                newuv[i] = uv[(i + 4 - rot) % uv.length];
             }
             uv = newuv;
         }
@@ -521,86 +523,91 @@ public class OBJExport {
         f.groupLine = updateGroup(GROUP_TEXTURE, material);
         switch (sv) {
             case TOP:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]);
                 break;
             case TOPFLIP:
-                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[2], v[2], uv[3], v[1], uv[0], v[0], uv[1]); 
+                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[2], v[2], uv[3], v[1], uv[0], v[0], uv[1]);
                 break;
             case TOPFLIPV:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]);
                 break;
             case TOPFLIPHV:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]);
                 break;
             case BOTTOM:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[3], v[2], uv[2], v[1], uv[1], v[0], uv[0]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[3], v[2], uv[2], v[1], uv[1], v[0], uv[0]);
                 break;
             case BOTH:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]); 
-                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[3], v[2], uv[2], v[1], uv[1], v[0], uv[0]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]);
+                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[3], v[2], uv[2], v[1], uv[1], v[0], uv[0]);
                 break;
             case FLIP:
-                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]); 
-                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[2], v[2], uv[3], v[1], uv[0], v[0], uv[1]); 
+                f.faceLine = String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[0], uv[0], v[1], uv[1], v[2], uv[2], v[3], uv[3]);
+                f.faceLine += String.format("f %d/%d %d/%d %d/%d %d/%d\n", v[3], uv[2], v[2], uv[3], v[1], uv[0], v[0], uv[1]);
                 break;
         }
         faces.add(f);
     }
-    
+
     public Set<String> getMaterialIDs() {
         return matIDs;
     }
-    
+
     private static final boolean getSubblock(short[] mod, int x, int y, int z) {
         if ((x >= 0) && (x < MODELSCALE) && (y >= 0) && (y < MODELSCALE) && (z >= 0) && (z < MODELSCALE)) {
-            return mod[MODELSCALE*MODELSCALE*y + MODELSCALE*z + x] != 0;
+            return mod[MODELSCALE * MODELSCALE * y + MODELSCALE * z + x] != 0;
         }
         return false;
     }
+
     // Scan along X axis
     private int scanX(short[] tmod, int x, int y, int z) {
         int xlen = 0;
-        while (getSubblock(tmod, x+xlen, y, z)) { 
+        while (getSubblock(tmod, x + xlen, y, z)) {
             xlen++;
         }
         return xlen;
     }
+
     // Scan along Z axis for rows matching given x length
     private int scanZ(short[] tmod, int x, int y, int z, int xlen) {
         int zlen = 0;
-        while (scanX(tmod, x, y, z+zlen) >= xlen) {
+        while (scanX(tmod, x, y, z + zlen) >= xlen) {
             zlen++;
         }
         return zlen;
     }
+
     // Scan along Y axis for layers matching given X and Z lengths
     private int scanY(short[] tmod, int x, int y, int z, int xlen, int zlen) {
         int ylen = 0;
-        while (scanZ(tmod, x, y+ylen, z, xlen) >= zlen) {
+        while (scanZ(tmod, x, y + ylen, z, xlen) >= zlen) {
             ylen++;
         }
         return ylen;
     }
+
     private void addSubblock(short[] tmod, int x, int y, int z, List<RenderPatch> list) {
         // Find dimensions of cuboid
         int xlen = scanX(tmod, x, y, z);
         int zlen = scanZ(tmod, x, y, z, xlen);
         int ylen = scanY(tmod, x, y, z, xlen, zlen);
         // Add equivalent of boxblock
-        CustomRenderer.addBox(HDBlockModels.getPatchDefinitionFactory(), list, 
-                BLKSIZE * x, BLKSIZE * (x+xlen), 
-                BLKSIZE * y, BLKSIZE * (y+ylen),
-                BLKSIZE * z, BLKSIZE * (z+zlen), 
+        CustomRenderer.addBox(HDBlockModels.getPatchDefinitionFactory(), list,
+                BLKSIZE * x, BLKSIZE * (x + xlen),
+                BLKSIZE * y, BLKSIZE * (y + ylen),
+                BLKSIZE * z, BLKSIZE * (z + zlen),
                 HDBlockModels.boxPatchList);
         // And remove blocks from model (since we have them covered)
         for (int xx = 0; xx < xlen; xx++) {
             for (int yy = 0; yy < ylen; yy++) {
                 for (int zz = 0; zz < zlen; zz++) {
-                    tmod[MODELSCALE*MODELSCALE*(y+yy) + MODELSCALE*(z+zz) + (x+xx)] = 0;
+                    tmod[MODELSCALE * MODELSCALE * (y + yy) + MODELSCALE * (z + zz) + (x + xx)] = 0;
                 }
             }
         }
     }
+
     private PatchDefinition[] getScaledModelAsPatches(short[] mod) {
         ArrayList<RenderPatch> list = new ArrayList<RenderPatch>();
         short[] tmod = Arrays.copyOf(mod, mod.length);  // Make copy
@@ -619,7 +626,7 @@ public class OBJExport {
         }
         return pd;
     }
-    
+
     private String updateGroup(int grpIndex, String newgroup) {
         if (enabledGroups[grpIndex]) {
             if (!newgroup.equals(group[grpIndex])) {
@@ -636,20 +643,21 @@ public class OBJExport {
         }
         return groupline;
     }
-    
+
     public boolean getGroupEnabled(int grpIndex) {
         if (grpIndex < enabledGroups.length) {
             return enabledGroups[grpIndex];
-        }
-        else {
+        } else {
             return false;
         }
     }
+
     public void setGroupEnabled(int grpIndex, boolean set) {
         if (grpIndex < enabledGroups.length) {
             enabledGroups[grpIndex] = set;
         }
     }
+
     public String getBaseName() {
         return basename;
     }

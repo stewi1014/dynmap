@@ -8,10 +8,11 @@ import java.io.IOException;
 
 public class CustomHeaderFilter implements Filter {
     private final ConfigurationNode custhttp;
+
     public CustomHeaderFilter(ConfigurationNode configuration) {
         this.custhttp = configuration;
     }
-    
+
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
     }

@@ -1,15 +1,14 @@
 package org.dynmap.servlet;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Date;
+import org.dynmap.DynmapCore;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.dynmap.DynmapCore;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Date;
 
 public class ConfigJSServlet extends HttpServlet {
     private static final long serialVersionUID = 3543457384759837L;
@@ -50,7 +49,7 @@ public class ConfigJSServlet extends HttpServlet {
         sb.append("'\n }\n};\n");
         outputBytes = sb.toString().getBytes(cs_utf8);
     }
-    
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         String dateStr = new Date().toString();

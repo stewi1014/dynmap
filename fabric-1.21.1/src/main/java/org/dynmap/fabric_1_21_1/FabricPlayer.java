@@ -6,7 +6,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-
 import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
 import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
@@ -199,9 +198,10 @@ public class FabricPlayer extends FabricCommandSender implements DynmapPlayer {
         }
         return false;
     }
+
     @Override
     public boolean isSpectator() {
-        if(player != null) {
+        if (player != null) {
             return player.isSpectator();
         }
         return false;
@@ -251,7 +251,7 @@ public class FabricPlayer extends FabricCommandSender implements DynmapPlayer {
             }
 
             if (subtitle != null) {
-            	SubtitleS2CPacket subtitlepkt = new SubtitleS2CPacket(Text.literal(subtitle));
+                SubtitleS2CPacket subtitlepkt = new SubtitleS2CPacket(Text.literal(subtitle));
                 player.networkHandler.sendPacket(subtitlepkt);
             }
         }

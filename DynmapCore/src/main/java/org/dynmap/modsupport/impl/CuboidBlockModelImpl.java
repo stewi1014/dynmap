@@ -1,10 +1,10 @@
 package org.dynmap.modsupport.impl;
 
+import org.dynmap.modsupport.CuboidBlockModel;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
-
-import org.dynmap.modsupport.CuboidBlockModel;
 
 public class CuboidBlockModelImpl extends BlockModelImpl implements CuboidBlockModel {
     private static class Cuboid {
@@ -12,25 +12,28 @@ public class CuboidBlockModelImpl extends BlockModelImpl implements CuboidBlockM
         double xmax, ymax, zmax;
         int[] textureidx;
     }
+
     private static class Crossed {
         double xmin, ymin, zmin;
         double xmax, ymax, zmax;
         int textureidx;
     }
+
     private ArrayList<Cuboid> cuboids = new ArrayList<Cuboid>();
     private ArrayList<Crossed> crosseds = new ArrayList<Crossed>();
-    
+
     @Deprecated
     public CuboidBlockModelImpl(int blkid, ModModelDefinitionImpl mdf) {
         super(blkid, mdf);
     }
+
     public CuboidBlockModelImpl(String blkname, ModModelDefinitionImpl mdf) {
         super(blkname, mdf);
     }
 
     @Override
     public void addCuboid(double xmin, double ymin, double zmin, double xmax,
-            double ymax, double zmax, int[] patchIndices) {
+                          double ymax, double zmax, int[] patchIndices) {
         Cuboid c = new Cuboid();
         c.xmin = xmin;
         c.xmax = xmax;
@@ -40,16 +43,15 @@ public class CuboidBlockModelImpl extends BlockModelImpl implements CuboidBlockM
         c.zmax = zmax;
         if (patchIndices != null) {
             c.textureidx = Arrays.copyOf(patchIndices, 6);
-        }
-        else {
-            c.textureidx = new int[] { 0, 1, 2, 3, 4, 5 };
+        } else {
+            c.textureidx = new int[]{0, 1, 2, 3, 4, 5};
         }
         cuboids.add(c);
     }
 
     @Override
     public void addCrossedPatches(double xmin, double ymin, double zmin,
-            double xmax, double ymax, double zmax, int patchIndex) {
+                                  double xmax, double ymax, double zmax, int patchIndex) {
         Crossed c = new Crossed();
         c.xmin = xmin;
         c.xmax = xmax;
@@ -60,7 +62,7 @@ public class CuboidBlockModelImpl extends BlockModelImpl implements CuboidBlockM
         c.textureidx = patchIndex;
         crosseds.add(c);
     }
-    
+
     @Override
     public String getLine() {
         String ids = this.getIDsAndMeta();

@@ -24,11 +24,12 @@
   "mixins": [
     "dynmap.mixins.json"
   ],
-  "accessWidener" : "dynmap.accesswidener",
-
+  "accessWidener": "dynmap.accesswidener",
   "depends": {
     "fabricloader": ">=0.15.11",
     "fabric": ">=0.102.0",
-    "minecraft": ["1.21.1"]
+    "minecraft": [
+      "1.21.1"
+    ]
   }
 }
