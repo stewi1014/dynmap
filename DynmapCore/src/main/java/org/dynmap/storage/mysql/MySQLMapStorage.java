@@ -1146,8 +1146,8 @@ public class MySQLMapStorage extends MapStorage {
 
     @Override
     // External web server only
-    public String getTilesURI(boolean login_enabled) {
-        return "standalone/MySQL_tiles.php?tile=";
+    public String getTileURI(boolean login_enabled) {
+        return "standalone/MySQL_tile.php?tile=";
     }
 
     @Override

@@ -1023,8 +1023,8 @@ public class SQLiteMapStorage extends MapStorage {
 
     @Override
     // External web server only
-    public String getTilesURI(boolean login_enabled) {
-        return "standalone/SQLite_tiles.php?tile=";
+    public String getTileURI(boolean login_enabled) {
+        return "standalone/SQLite_tile.php?tile=";
     }
 
     @Override

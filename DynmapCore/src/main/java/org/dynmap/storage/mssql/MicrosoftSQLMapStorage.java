@@ -1015,7 +1015,7 @@ public class MicrosoftSQLMapStorage extends MapStorage {
 
     @Override
     // External web server only
-    public String getTilesURI(boolean login_enabled) {
+    public String getTileURI(boolean login_enabled) {
         return "standalone/MSSQL_tiles.php?tile=";
     }
 

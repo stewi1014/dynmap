@@ -1074,9 +1074,20 @@ public class PostgreSQLMapStorage extends MapStorage {
     }
 
     @Override
+    public boolean supportsBatchedTiles() {
+        return true;
+    }
+
+    @Override
     // External web server only
-    public String getTilesURI(boolean login_enabled) {
-        return "standalone/PostgreSQL_tiles.php?tile=";
+    public String getTileURI(boolean login_enabled) {
+        return "standalone/PostgreSQL_tile.php?tile=";
+    }
+
+    @Override
+    // External web server only
+    public String getBatchedTilesURI(boolean login_enabled) {
+        return "standalone/PostgreSQL_batched_tiles.php?tiles=";
     }
 
     @Override

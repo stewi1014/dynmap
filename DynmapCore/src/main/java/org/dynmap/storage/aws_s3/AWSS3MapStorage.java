@@ -621,7 +621,7 @@ public class AWSS3MapStorage extends MapStorage {
 
     @Override
     // For external web server only
-    public String getTilesURI(boolean login_enabled) {
+    public String getTileURI(boolean login_enabled) {
         return "tiles/";
     }
 

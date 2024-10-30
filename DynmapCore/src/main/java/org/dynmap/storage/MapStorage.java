@@ -204,7 +204,15 @@ public abstract class MapStorage {
      * @param login_enabled - selects based on login security enabled
      * @return URI
      */
-    public abstract String getTilesURI(boolean login_enabled);
+    public abstract String getTileURI(boolean login_enabled);
+
+    /**
+     * The base URI for loading many tiles at once
+     *
+     * @param login_enabled
+     * @return URI
+     */
+    public abstract String getBatchedTilesURI(boolean login_enabled);
 
     /**
      * Test if standalone JSON files should be PHP wrapped
@@ -507,6 +515,10 @@ public abstract class MapStorage {
             Log.severe("  CausedBy: " + cause.getMessage());
             cause = cause.getCause();
         }
+    }
+
+    public boolean supportsBatchedTiles() {
+        return false;
     }
 
     public static class StorageShutdownException extends Exception {

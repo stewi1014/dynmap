@@ -465,8 +465,10 @@ url:
     #login: "up/login"
     # register URL
     #register: "up/register"
-    # tiles base URL
-    #tiles: "tiles/"
+    # tile base URL
+    #tile: "tiles/"
+    # Batched tiles base URL
+    #tile: "tiles/"
     # markers base URL
     #markers: "tiles/"
     # Snapshot cache size, in chunks

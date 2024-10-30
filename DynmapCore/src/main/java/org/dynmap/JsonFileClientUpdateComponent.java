@@ -11,7 +11,6 @@ import org.json.simple.parser.ParseException;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -257,8 +256,15 @@ public class JsonFileClientUpdateComponent extends ClientUpdateComponent {
         sb.append(core.configuration.getString("url/register", store.getStandaloneRegisterURI()));
         sb.append("',\n");
         /* Get tiles URL */
+        sb.append("  tile: '");
+        sb.append(core.configuration.getString("url/tile", store.getTileURI(login_enabled)));
+        sb.append("',\n");
+        /* Get batched tiles URL */
+        if (store.supportsBatchedTiles()) {
+
+        }
         sb.append("  tiles: '");
-        sb.append(core.configuration.getString("url/tiles", store.getTilesURI(login_enabled)));
+        sb.append(core.configuration.getString("url/tiles", store.getTileURI(login_enabled)));
         sb.append("',\n");
         /* Get markers URL */
         sb.append("  markers: '");
