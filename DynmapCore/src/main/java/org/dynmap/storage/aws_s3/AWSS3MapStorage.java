@@ -1,5 +1,32 @@
 package org.dynmap.storage.aws_s3;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.dynmap.DynmapCore;
+import org.dynmap.DynmapWorld;
+import org.dynmap.Log;
+import org.dynmap.MapType;
+import org.dynmap.MapType.ImageEncoding;
+import org.dynmap.MapType.ImageVariant;
+import org.dynmap.PlayerFaces.FaceType;
+import org.dynmap.WebAuthManager;
+import org.dynmap.storage.MapStorage;
+import org.dynmap.storage.MapStorageTile;
+import org.dynmap.storage.MapStorageTileEnumCB;
+import org.dynmap.storage.MapStorageBaseTileEnumCB;
+import org.dynmap.storage.MapStorageTileSearchEndCB;
+import org.dynmap.utils.BufferInputStream;
+import org.dynmap.utils.BufferOutputStream;
+
 import io.github.linktosriram.s3lite.api.client.S3Client;
 import io.github.linktosriram.s3lite.api.exception.NoSuchKeyException;
 import io.github.linktosriram.s3lite.api.exception.S3Exception;
@@ -119,19 +146,20 @@ public class AWSS3MapStorage extends MapStorage {
 
         @Override
         public boolean write(long hash, BufferOutputStream encImage, long timestamp) {
-            boolean done = false;
-            S3Client s3 = null;
-            try {
-                s3 = getConnection();
-                if (encImage == null) { // Delete?
-                    DeleteObjectRequest req = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                    s3.deleteObject(req);
-                } else {
-                    PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(map.getImageFormat().getEncoding().getContentType())
-                            .addMetadata("x-dynmap-hash", Long.toHexString(hash)).addMetadata("x-dynmap-ts", Long.toString(timestamp)).build();
-                    s3.putObject(req, RequestBody.fromBytes(encImage.buf));
-                }
-                done = true;
+        	boolean done = false;
+        	S3Client s3 = null;
+        	try {
+            	s3 = getConnection();
+        		if (encImage == null) { // Delete?
+        			DeleteObjectRequest req = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+        			s3.deleteObject(req);
+        		}
+        		else {
+        			PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(map.getImageFormat().getEncoding().getContentType())
+        					.addMetadata("x-dynmap-hash", Long.toHexString(hash)).addMetadata("x-dynmap-ts", Long.toString(timestamp)).build();
+        			s3.putObject(req, RequestBody.fromBytes(encImage.buf, encImage.len));
+        		}
+    			done = true;
             } catch (S3Exception x) {
                 Log.severe("AWS Exception", x);
             } catch (StorageShutdownException x) {
@@ -215,7 +243,7 @@ public class AWSS3MapStorage extends MapStorage {
     }
 
     private String bucketname;
-    private Region region;
+    private String region;
     private String access_key_id;
     private String secret_access_key;
     private String prefix;
@@ -242,22 +270,12 @@ public class AWSS3MapStorage extends MapStorage {
         }
         // Get our settings
         bucketname = core.configuration.getString("storage/bucketname", "dynmap");
+        region = core.configuration.getString("storage/region", "us-east-1");
         access_key_id = core.configuration.getString("storage/aws_access_key_id", System.getenv("AWS_ACCESS_KEY_ID"));
         secret_access_key = core.configuration.getString("storage/aws_secret_access_key", System.getenv("AWS_SECRET_ACCESS_KEY"));
         prefix = core.configuration.getString("storage/prefix", "");
-
-        // Either use a custom region, or one of the default AWS regions
-        String region_name = core.configuration.getString("storage/region", "us-east-1");
-        String region_endpoint = core.configuration.getString("storage/override_endpoint", "");
-
-        if (region_endpoint.length() > 0) {
-            region = Region.of(region_name, URI.create(region_endpoint));
-        } else {
-            region = Region.fromString(region_name);
-        }
-
-        if ((prefix.length() > 0) && (prefix.charAt(prefix.length() - 1) != '/')) {
-            prefix += '/';
+        if ((prefix.length() > 0) && (prefix.charAt(prefix.length()-1) != '/')) {
+        	prefix += '/';
         }
         // Now creste the access client for the S3 service
         Log.info("Using AWS S3 storage: web site at S3 bucket " + bucketname + " in region " + region);
@@ -504,20 +522,21 @@ public class AWSS3MapStorage extends MapStorage {
 
     @Override
     public boolean setPlayerFaceImage(String playername, FaceType facetype,
-                                      BufferOutputStream encImage) {
-        boolean done = false;
-        String baseKey = prefix + "tiles/faces/" + facetype.id + "/" + playername + ".png";
-        S3Client s3 = null;
-        try {
-            s3 = getConnection();
-            if (encImage == null) { // Delete?
-                DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                s3.deleteObject(delreq);
-            } else {
-                PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType("image/png").build();
-                s3.putObject(req, RequestBody.fromBytes(encImage.buf));
-            }
-            done = true;
+            BufferOutputStream encImage) {
+    	boolean done = false;
+    	String baseKey = prefix + "tiles/faces/" + facetype.id + "/" + playername + ".png";
+    	S3Client s3 = null;
+    	try {
+        	s3 = getConnection();
+    		if (encImage == null) { // Delete?
+				DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+			    s3.deleteObject(delreq);
+    		}
+    		else {
+    			PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType("image/png").build();
+    			s3.putObject(req, RequestBody.fromBytes(encImage.buf, encImage.len));
+    		}
+			done = true;
         } catch (S3Exception x) {
             Log.severe("AWS Exception", x);
         } catch (StorageShutdownException x) {
@@ -557,19 +576,20 @@ public class AWSS3MapStorage extends MapStorage {
 
     @Override
     public boolean setMarkerImage(String markerid, BufferOutputStream encImage) {
-        boolean done = false;
-        String baseKey = prefix + "tiles/_markers_/" + markerid + ".png";
-        S3Client s3 = null;
-        try {
-            s3 = getConnection();
-            if (encImage == null) { // Delete?
-                DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                s3.deleteObject(delreq);
-            } else {
-                PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType("image/png").build();
-                s3.putObject(req, RequestBody.fromBytes(encImage.buf));
-            }
-            done = true;
+    	boolean done = false;
+    	String baseKey = prefix + "tiles/_markers_/" + markerid + ".png";
+    	S3Client s3 = null;
+    	try {
+        	s3 = getConnection();
+    		if (encImage == null) { // Delete?
+				DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+			    s3.deleteObject(delreq);
+    		}
+    		else {
+       			PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType("image/png").build();
+    			s3.putObject(req, RequestBody.fromBytes(encImage.buf, encImage.len));
+    		}
+			done = true;
         } catch (S3Exception x) {
             Log.severe("AWS Exception", x);
         } catch (StorageShutdownException x) {
@@ -689,51 +709,56 @@ public class AWSS3MapStorage extends MapStorage {
      * @return true if successful
      */
     public boolean setStaticWebFile(String fileid, BufferOutputStream content) {
-
-        boolean done = false;
-        String baseKey = prefix + fileid;
-        S3Client s3 = null;
-        try {
-            s3 = getConnection();
-            byte[] cacheval = standalone_cache.get(fileid);
-
-            if (content == null) { // Delete?
-                if ((cacheval != null) && (cacheval.length == 0)) {    // Delete cached?
-                    return true;
-                }
-                DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
-                s3.deleteObject(delreq);
-                standalone_cache.put(fileid, new byte[0]);    // Mark in cache
-            } else {
-                byte[] digest = content.buf;
-                try {
-                    MessageDigest md = MessageDigest.getInstance("MD5");
-                    md.update(content.buf);
-                    digest = md.digest();
-                } catch (NoSuchAlgorithmException nsax) {
-
-                }
-                // If cached and same, just return
-                if (Arrays.equals(digest, cacheval)) {
-                    return true;
-                }
-                String ct = "text/plain";
-                if (fileid.endsWith(".json")) {
-                    ct = "application/json";
-                } else if (fileid.endsWith(".php")) {
-                    ct = "application/x-httpd-php";
-                } else if (fileid.endsWith(".html")) {
-                    ct = "text/html";
-                } else if (fileid.endsWith(".css")) {
-                    ct = "text/css";
-                } else if (fileid.endsWith(".js")) {
-                    ct = "application/x-javascript";
-                }
-                PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(ct).build();
-                s3.putObject(req, RequestBody.fromBytes(content.buf));
-                standalone_cache.put(fileid, digest);
-            }
-            done = true;
+    	
+    	boolean done = false;
+    	String baseKey = prefix + fileid;
+    	S3Client s3 = null;
+    	try {
+        	s3 = getConnection();
+    		byte[] cacheval = standalone_cache.get(fileid);
+    		
+    		if (content == null) { // Delete?
+    			if ((cacheval != null) && (cacheval.length == 0)) {	// Delete cached?
+    				return true;
+    			}
+				DeleteObjectRequest delreq = DeleteObjectRequest.builder().bucketName(bucketname).key(baseKey).build();
+			    s3.deleteObject(delreq);
+			    standalone_cache.put(fileid, new byte[0]);	// Mark in cache
+    		}
+    		else {
+    			byte[] digest = content.buf;
+    			try {
+    				MessageDigest md = MessageDigest.getInstance("MD5");
+    				md.update(content.buf);
+    				digest = md.digest();
+    			} catch (NoSuchAlgorithmException nsax) {
+    				
+    			}
+    			// If cached and same, just return
+    		    if (Arrays.equals(digest, cacheval)) {
+    		    	return true;
+    		    }
+    			String ct = "text/plain";
+    			if (fileid.endsWith(".json")) {
+    				ct = "application/json";
+    			}
+    			else if (fileid.endsWith(".php")) {
+    				ct = "application/x-httpd-php";
+    			}
+    			else if (fileid.endsWith(".html")) {
+    				ct = "text/html";
+    			}
+    			else if (fileid.endsWith(".css")) {
+    				ct = "text/css";
+    			}
+    			else if (fileid.endsWith(".js")) {
+    				ct = "application/x-javascript";
+    			}
+       			PutObjectRequest req = PutObjectRequest.builder().bucketName(bucketname).key(baseKey).contentType(ct).build();
+    			s3.putObject(req, RequestBody.fromBytes(content.buf, content.len));
+        		standalone_cache.put(fileid, digest);
+    		}
+			done = true;
         } catch (S3Exception x) {
             Log.severe("AWS Exception", x);
         } catch (StorageShutdownException x) {
@@ -758,10 +783,10 @@ public class AWSS3MapStorage extends MapStorage {
                 if (c == null) {
                     if (cpoolCount < POOLSIZE) {  // Still more we can have
                         c = new DefaultS3ClientBuilder()
-                                .credentialsProvider(() -> AwsBasicCredentials.create(access_key_id, secret_access_key))
-                                .region(region)
-                                .httpClient(URLConnectionSdkHttpClient.create())
-                                .build();
+                        	    .credentialsProvider(() -> AwsBasicCredentials.create(access_key_id, secret_access_key))
+                        	    .region(Region.fromString(region))
+                        	    .httpClient(URLConnectionSdkHttpClient.create())
+                        	    .build();
                         if (c == null) {
                             Log.severe("Error creating S3 access client");
                             return null;
