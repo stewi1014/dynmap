@@ -256,8 +256,9 @@ public class MapManager {
     private static final String RENDERTYPE_FULLRENDER = "Full render";
     private static final String RENDERTYPE_RADIUSRENDER = "Radius render";
     private static final String RENDERTYPE_UPDATERENDER = "Update render";
-
-    /* This always runs on render pool threads - no bukkit calls from here */
+    private static final String RENDERTYPE_ZOOMTILES = "Zoom tile render";
+    
+    /* This always runs on render pool threads - no bukkit calls from here */ 
     private class FullWorldRenderState implements Runnable {
         DynmapWorld world;    /* Which world are we rendering */
         DynmapLocation loc;
@@ -292,13 +293,11 @@ public class MapManager {
         HashSet<String> storedTileIds = new HashSet<>();
 
         /* Full world, all maps render */
-        FullWorldRenderState(DynmapWorld dworld, DynmapLocation l, DynmapCommandSender sender, String mapname, boolean updaterender, boolean resume) {
+        FullWorldRenderState(DynmapWorld dworld, DynmapLocation l, DynmapCommandSender sender, String mapname, String renderType, boolean resume) {
             this(dworld, l, sender, mapname, -1);
-            if (updaterender) {
-                rendertype = RENDERTYPE_UPDATERENDER;
+            rendertype = renderType;
+            if (renderType.equals(RENDERTYPE_UPDATERENDER)) {
                 this.updaterender = true;
-            } else {
-                rendertype = RENDERTYPE_FULLRENDER;
             }
             this.resume = resume;
         }
@@ -775,19 +774,23 @@ public class MapManager {
                 tileQueue.remove(tile);
                 /* Switch to not checking if rendered tile is blank - breaks us on skylands, where tiles can be nominally blank - just work off chunk cache empty */
                 if (cache.isEmpty() == false) {
-                    boolean upd;
+                    boolean updated = false;
                     if (skipTile) {
-                        upd = false;
                         skipcnt++;
                     } else {
                         long rt0 = System.nanoTime();
-                        upd = tile.render(cache, mapname);
-                        total_render_ns.addAndGet(System.nanoTime() - rt0);
+                        if (rendertype.equals(RENDERTYPE_ZOOMTILES)) {
+                            MapStorageTile storageTile = world.getMapStorage().getTile(world, map, tile.tileOrdinalX(), tile.tileOrdinalY(), 0, MapType.ImageVariant.STANDARD);
+                            world.enqueueZoomOutUpdate(storageTile);
+                        } else {
+                            updated = tile.render(cache, mapname);
+                        }
+                        total_render_ns.addAndGet(System.nanoTime()-rt0);
                         rendercalls.incrementAndGet();
                     }
                     synchronized (lock) {
                         rendered.setFlag(tile.tileOrdinalX(), tile.tileOrdinalY(), true);
-                        if (upd || (!updaterender)) {    /* If updated or not an update render */
+                        if(updated || (!updaterender)) {    /* If updated or not an update render */
                             /* Add adjacent unrendered tiles to queue */
                             for (MapTile adjTile : map.getAdjecentTiles(tile)) {
                                 if (!found.getFlag(adjTile.tileOrdinalX(), adjTile.tileOrdinalY())) {
@@ -1184,7 +1187,7 @@ public class MapManager {
                 sender.sendMessage(rndr.rendertype + " of world '" + wname + "' already active.");
                 return;
             }
-            rndr = new FullWorldRenderState(world, l, sender, mapname, update, resume);    /* Make new activation record */
+            rndr = new FullWorldRenderState(world,l,sender, mapname, update ? RENDERTYPE_UPDATERENDER : RENDERTYPE_FULLRENDER, resume);    /* Make new activation record */
             active_renders.put(wname, rndr);    /* Add to active table */
         }
         /* Schedule first tile to be worked */
@@ -1196,6 +1199,34 @@ public class MapManager {
             sender.sendMessage("Full render resuming on world '" + wname + "'...");
         else
             sender.sendMessage("Full render starting on world '" + wname + "'...");
+    }
+
+    void updateZoomTiles(DynmapLocation l, DynmapCommandSender sender, String mapname, boolean resume) {
+        DynmapWorld world = getWorld(l.world);
+        if (world == null) {
+            sender.sendMessage("Could not render: world '" + l.world + "' not defined in configuration.");
+            return;
+        }
+
+        String worldName = l.world;
+        FullWorldRenderState renderState;
+        synchronized (lock) {
+            renderState = active_renders.get(worldName);
+            if (renderState != null) {
+                sender.sendMessage(renderState.rendertype + " of world '" + worldName + "' already active.");
+                return;
+            }
+
+            renderState = new FullWorldRenderState(world, l, sender, mapname, RENDERTYPE_ZOOMTILES, resume);
+            active_renders.put(worldName, renderState);
+        }
+
+        scheduleDelayedJob(renderState, 0);
+
+        if (resume)
+            sender.sendMessage("Zoom tile update resuming on world '" + worldName + "'...");
+        else
+            sender.sendMessage("Zoom tile update starting on world '" + worldName + "'...");
     }
 
     void renderWorldRadius(DynmapLocation l, DynmapCommandSender sender, String mapname, int radius) {

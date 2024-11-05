@@ -214,6 +214,9 @@ public abstract class DynmapWorld {
                         Arrays.fill(argb, 0);
                     }
                 }
+            } catch (Throwable e) {
+                Log.severe(e);
+                throw e;
             } finally {
                 tile1.releaseReadLock();
             }
